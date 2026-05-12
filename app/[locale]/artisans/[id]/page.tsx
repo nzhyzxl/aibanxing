@@ -233,10 +233,14 @@ function ProductItem({ product, locale }: { product: Product; locale: string }) 
   const cover = product.images?.[0]
 
   return (
-    <div className="bg-white rounded-xl border border-[#E8DDD4] overflow-hidden">
+    <Link
+      href={`/${locale}/products/${product.id}`}
+      className="block bg-white rounded-xl border border-[#E8DDD4] hover:border-[#F5A623] hover:-translate-y-0.5 transition-all overflow-hidden group"
+    >
       <div className="relative aspect-square bg-[#F5EFE6]">
         {cover ? (
-          <Image src={cover} alt={name} fill className="object-cover"
+          <Image src={cover} alt={name} fill
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
             sizes="(max-width: 768px) 50vw, 25vw" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[#C8A882] text-2xl">🌿</div>
@@ -256,6 +260,6 @@ function ProductItem({ product, locale }: { product: Product; locale: string }) 
           </span>
         </div>
       </div>
-    </div>
+    </Link>
   )
 }

@@ -172,7 +172,7 @@ function ProductCard({ product, locale }: { product: ProductWithArtisan; locale:
 
   return (
     <Link
-      href={`/${locale}/artisans/${product.artisan_id}`}
+      href={`/${locale}/products/${product.id}`}
       className="block bg-white rounded-2xl border border-[#E8DDD4] hover:border-[#F5A623] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden group"
     >
       <div className="relative aspect-[4/3] bg-[#F5EFE6] overflow-hidden">
