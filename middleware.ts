@@ -7,5 +7,5 @@ export default createMiddleware({
 })
 
 export const config = {
-  matcher: ['/((?!admin|api|_next|.*\\..*).*)'],
+  matcher: ['/((?!admin|api|wechat-bind|_next|.*\\..*).*)'],
 }
