@@ -50,12 +50,15 @@ export default function ArtisansPage({ params }: { params: { locale: string } })
       setFiltered(list)
 
       // 获取邀请人信息
-      const inviterIds = [...new Set(list.map(a => a.invited_by).filter(Boolean))]
-      if (inviterIds.length > 0) {
+      const inviterIds = list
+        .map(a => a.invited_by)
+        .filter((id): id is string => !!id)
+      const uniqueInviters = Array.from(new Set(inviterIds))
+      if (uniqueInviters.length > 0) {
         const { data: inviterData } = await supabase
           .from('users')
           .select('*')
-          .in('id', inviterIds as string[])
+          .in('id', uniqueInviters)
         const map: Record<string, User> = {}
         ;(inviterData || []).forEach((u: User) => { map[u.id] = u })
         setInviters(map)
@@ -177,14 +180,15 @@ function ArtisanCard({
 }) {
   const bio = locale === 'en' && artisan.bio_en ? artisan.bio_en : artisan.bio
   const city = locale === 'en' && artisan.city_en ? artisan.city_en : artisan.city
-  const catLabel = {
+  const catLabels: Record<string, { zh: string; en: string }> = {
     ceramics: { zh: '陶瓷', en: 'Ceramics' },
     leather: { zh: '皮具', en: 'Leather' },
     textile: { zh: '织物', en: 'Textiles' },
     food: { zh: '食品', en: 'Food' },
     handcraft: { zh: '手作', en: 'Handcraft' },
     service: { zh: '服务', en: 'Services' },
-  }[artisan.category || '']
+  }
+  const catLabel = artisan.category ? catLabels[artisan.category] : undefined
 
   return (
     <Link
