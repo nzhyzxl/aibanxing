@@ -16,7 +16,7 @@ export const getSupabaseAdmin = () => {
 }
 
 // ── 类型定义 ──
-export type UserRole = 'admin' | 'artisan'
+export type UserRole = 'admin' | 'artisan' | 'visitor'
 export type UserStatus = 'active' | 'suspended'
 export type InvitationStatus = 'pending' | 'approved' | 'rejected'
 export type Category = 'ceramics' | 'leather' | 'textile' | 'food' | 'handcraft' | 'service'
@@ -37,6 +37,9 @@ export interface User {
   shipping_address?: string
   status: UserStatus
   invited_by?: string
+  wechat_openid?: string
+  wechat_nickname?: string
+  wechat_avatar?: string
   created_at: string
 }
 

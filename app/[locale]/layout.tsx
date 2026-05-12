@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
+import { WxAuthProvider } from '@/lib/wx-auth'
 
 export default function FrontendLayout({
   children,
@@ -9,11 +10,13 @@ export default function FrontendLayout({
   params: { locale: string }
 }) {
   return (
-    <div className="min-h-screen bg-cream font-sans">
-      <Navbar locale={locale} />
-      <main>{children}</main>
-      <Footer />
-    </div>
+    <WxAuthProvider>
+      <div className="min-h-screen bg-cream font-sans">
+        <Navbar locale={locale} />
+        <main>{children}</main>
+        <Footer locale={locale} />
+      </div>
+    </WxAuthProvider>
   )
 }
 
@@ -27,12 +30,15 @@ function Navbar({ locale }: { locale: string }) {
         <Link href={`/${locale}`} className="font-serif text-lg font-semibold text-warm-charcoal">
           爱伴行 <span className="text-warm-gray text-sm font-sans font-normal">AiBanXing</span>
         </Link>
-        <div className="flex items-center gap-6 text-sm text-warm-gray">
+        <div className="flex items-center gap-4 text-sm text-warm-gray">
           <Link href={`/${locale}/artisans`} className="hover:text-warm-charcoal transition-colors">
             {t('artisans')}
           </Link>
           <Link href={`/${locale}/about`} className="hover:text-warm-charcoal transition-colors">
             {t('about')}
+          </Link>
+          <Link href={`/${locale}/my-shares`} className="hover:text-warm-charcoal transition-colors text-xs">
+            🧧 {locale === 'zh' ? '我的分享' : 'My Shares'}
           </Link>
           <Link
             href={`/${otherLocale}`}
@@ -46,7 +52,7 @@ function Navbar({ locale }: { locale: string }) {
   )
 }
 
-function Footer() {
+function Footer({ locale }: { locale: string }) {
   return (
     <footer className="bg-cream border-t border-warm-border/40 py-12 text-center">
       <p className="font-serif text-xl text-warm-charcoal mb-2">爱伴行</p>

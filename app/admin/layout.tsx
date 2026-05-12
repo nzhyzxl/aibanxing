@@ -1,15 +1,19 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Layout, Menu, Typography, Spin } from 'antd'
+import { Layout, Menu, Typography, Spin, Alert } from 'antd'
 import {
   UserOutlined,
   AppstoreOutlined,
   MailOutlined,
   DashboardOutlined,
   LogoutOutlined,
+  GiftOutlined,
+  SettingOutlined,
+  WechatOutlined,
 } from '@ant-design/icons'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import WechatBindModal from '@/components/admin/WechatBindModal'
 
 const { Sider, Content } = Layout
 const { Text } = Typography
@@ -17,15 +21,22 @@ const { Text } = Typography
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [hasWechat, setHasWechat] = useState(true)
+  const [showBindModal, setShowBindModal] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session && pathname !== '/admin/login') {
         router.replace('/admin/login')
       } else {
         setChecking(false)
+        if (session?.user) {
+          const { data } = await supabase
+            .from('users').select('wechat_openid').eq('id', session.user.id).single()
+          setHasWechat(!!data?.wechat_openid)
+        }
       }
     })
   }, [pathname, router])
@@ -43,6 +54,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { key: '/admin/artisans', icon: <UserOutlined />, label: '匠人管理' },
     { key: '/admin/invitations', icon: <MailOutlined />, label: '邀请审核' },
     { key: '/admin/products', icon: <AppstoreOutlined />, label: '产品管理' },
+    { key: '/admin/transactions', icon: <GiftOutlined />, label: '成交记录' },
+    { key: '/admin/profile', icon: <SettingOutlined />, label: '我的资料' },
   ]
 
   return (
@@ -73,10 +86,34 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </Sider>
       <Layout>
+        {!hasWechat && pathname !== '/admin/login' && (
+          <Alert
+            type="warning"
+            showIcon
+            icon={<WechatOutlined />}
+            message={
+              <span>
+                你还没有绑定微信。绑定后可以分享产品并收获感谢红包 🧧
+                <a onClick={() => setShowBindModal(true)}
+                  style={{ marginLeft: 8, color: '#F5A623', cursor: 'pointer' }}>
+                  立即绑定 →
+                </a>
+              </span>
+            }
+            closable
+            style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}
+          />
+        )}
         <Content style={{ margin: '24px', background: '#fff', borderRadius: 8, padding: 24, minHeight: 360 }}>
           {children}
         </Content>
       </Layout>
+
+      <WechatBindModal
+        open={showBindModal}
+        onClose={() => setShowBindModal(false)}
+        onSuccess={() => setHasWechat(true)}
+      />
     </Layout>
   )
 }
