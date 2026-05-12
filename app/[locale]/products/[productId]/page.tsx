@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -17,6 +17,8 @@ const CATEGORY_LABELS: Record<string, { zh: string; en: string }> = {
   service: { zh: '服务', en: 'Services' },
 }
 
+const SWIPE_THRESHOLD = 50
+
 export default function ProductDetailPage({
   params,
 }: {
@@ -28,6 +30,40 @@ export default function ProductDetailPage({
   const [endorsements, setEndorsements] = useState<EndorsementWithEndorser[]>([])
   const [activeImage, setActiveImage] = useState(0)
   const [loading, setLoading] = useState(true)
+
+  // Swipe state
+  const [swipeOffset, setSwipeOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+  const touchStartX = useRef(0)
+  const imageCount = product?.images?.length || 0
+
+  const goToImage = useCallback((index: number) => {
+    if (imageCount === 0) return
+    setActiveImage(((index % imageCount) + imageCount) % imageCount)
+  }, [imageCount])
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    setIsSwiping(true)
+    setSwipeOffset(0)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isSwiping) return
+    setSwipeOffset(e.touches[0].clientX - touchStartX.current)
+  }
+
+  const handleTouchEnd = () => {
+    setIsSwiping(false)
+    if (Math.abs(swipeOffset) > SWIPE_THRESHOLD) {
+      if (swipeOffset > 0) {
+        goToImage(activeImage - 1)
+      } else {
+        goToImage(activeImage + 1)
+      }
+    }
+    setSwipeOffset(0)
+  }
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -113,22 +149,57 @@ export default function ProductDetailPage({
 
           {/* 左侧：图片区 */}
           <div>
-            {/* 主图 */}
-            <div className="relative aspect-square bg-[#F5EFE6] rounded-2xl overflow-hidden mb-3">
-              {product.images?.[activeImage] ? (
-                <Image
-                  src={product.images[activeImage]}
-                  alt={name}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  priority
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#C8A882] text-5xl">
-                  🌿
-                </div>
+            {/* 主图 — 支持左右滑动切换 */}
+            <div
+              className="relative aspect-square bg-[#F5EFE6] rounded-2xl overflow-hidden mb-3 touch-pan-y select-none"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <div
+                className="w-full h-full flex transition-transform duration-300"
+                style={{
+                  transform: `translateX(${isSwiping ? swipeOffset : 0}px)`,
+                  transition: isSwiping ? 'none' : 'transform 0.3s ease-out',
+                }}
+              >
+                {product.images?.[activeImage] ? (
+                  <Image
+                    src={product.images[activeImage]}
+                    alt={name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    priority
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[#C8A882] text-5xl">
+                    🌿
+                  </div>
+                )}
+              </div>
+
+              {/* 左右箭头（多图时显示） */}
+              {imageCount > 1 && (
+                <>
+                  <button
+                    onClick={() => goToImage(activeImage - 1)}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-[#6B4C35] hover:bg-white transition-colors"
+                    aria-label="Previous image"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => goToImage(activeImage + 1)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-[#6B4C35] hover:bg-white transition-colors"
+                    aria-label="Next image"
+                  >
+                    ›
+                  </button>
+                </>
               )}
+
               {catLabel && (
                 <span className="absolute top-3 left-3 bg-white/90 text-[#6B4C35] text-xs px-2.5 py-1 rounded-full font-medium">
                   {locale === 'zh' ? catLabel.zh : catLabel.en}
@@ -136,27 +207,46 @@ export default function ProductDetailPage({
               )}
             </div>
 
-            {/* 缩略图列表 */}
-            {product.images && product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                {product.images.map((img, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setActiveImage(i)}
-                    className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${
-                      activeImage === i ? 'border-[#F5A623]' : 'border-transparent'
-                    }`}
-                  >
-                    <Image
-                      src={img}
-                      alt={`${name} ${i + 1}`}
-                      width={64}
-                      height={64}
-                      className="object-cover w-full h-full"
+            {/* 指示器圆点 + 缩略图 */}
+            {imageCount > 1 && (
+              <>
+                {/* 圆点指示器 */}
+                <div className="flex items-center justify-center gap-1.5 mb-3">
+                  {product.images!.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`rounded-full transition-all ${
+                        activeImage === i
+                          ? 'w-2 h-2 bg-[#F5A623]'
+                          : 'w-1.5 h-1.5 bg-[#D4C8BC]'
+                      }`}
+                      aria-label={`Image ${i + 1}`}
                     />
-                  </button>
-                ))}
-              </div>
+                  ))}
+                </div>
+
+                {/* 缩略图列表 */}
+                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                  {product.images!.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setActiveImage(i)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${
+                        activeImage === i ? 'border-[#F5A623]' : 'border-transparent'
+                      }`}
+                    >
+                      <Image
+                        src={img}
+                        alt={`${name} ${i + 1}`}
+                        width={64}
+                        height={64}
+                        className="object-cover w-full h-full"
+                      />
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 

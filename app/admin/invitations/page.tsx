@@ -2,6 +2,8 @@ import { Metadata } from 'next'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import InvitationsClient from './client'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: '邀请审核 - 爱伴行后台',
 }
