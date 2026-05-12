@@ -1,0 +1,51 @@
+{
+  "nav": {
+    "artisans": "匠人",
+    "works": "作品",
+    "about": "故事",
+    "lang": "中"
+  },
+  "home": {
+    "hero_title": "遇见有温度的好物",
+    "hero_subtitle": "每一件，都有人为它作证",
+    "cta": "探索所有匠人",
+    "trust_invite": "仅限受邀加入",
+    "trust_endorse": "每位匠人都有真实背书",
+    "trust_curated": "由平台精选",
+    "count": "共 {count} 件作品"
+  },
+  "artisans": {
+    "title": "认识我们的匠人",
+    "subtitle": "每位匠人都经由真实的朋友邀请与背书",
+    "vouched_by": "由 {name} 邀请并推荐",
+    "count": "{count} 位匠人"
+  },
+  "profile": {
+    "trust_title": "朋友的信任",
+    "works_title": "作品与服务",
+    "contact_title": "想了解更多？",
+    "wechat_hint": "长按扫码添加微信",
+    "private_note": "成交发生在私信",
+    "share": "分享给朋友",
+    "inquire": "询价",
+    "xinxin_price": "初心价"
+  },
+  "about": {
+    "title": "爱　伴　行",
+    "tagline": "用爱与善意，陪伴美好流传",
+    "invite_only": "只有受邀，才能加入",
+    "join_title": "想加入我们？",
+    "join_subtitle": "告诉我们你的故事，我们会认真阅读每一封消息",
+    "scan_hint": "扫码联系我们",
+    "or_ask_friend": "或者，找一位已在平台的朋友，请他为你引荐"
+  },
+  "category": {
+    "all": "全部",
+    "ceramics": "陶瓷",
+    "leather": "皮具",
+    "textile": "织物",
+    "food": "食品",
+    "handcraft": "手作",
+    "service": "服务"
+  }
+}

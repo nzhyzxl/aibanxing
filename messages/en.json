@@ -1,0 +1,51 @@
+{
+  "nav": {
+    "artisans": "Artisans",
+    "works": "Works",
+    "about": "Stories",
+    "lang": "EN"
+  },
+  "home": {
+    "hero_title": "Discover things made with love",
+    "hero_subtitle": "Every piece, personally vouched for",
+    "cta": "Explore artisans",
+    "trust_invite": "Invitation only",
+    "trust_endorse": "Real endorsements",
+    "trust_curated": "Curated with care",
+    "count": "{count} works curated"
+  },
+  "artisans": {
+    "title": "Meet Our Artisans",
+    "subtitle": "Every artisan is personally invited and vouched for",
+    "vouched_by": "Vouched by {name}",
+    "count": "{count} artisans"
+  },
+  "profile": {
+    "trust_title": "Vouched by Friends",
+    "works_title": "Works & Services",
+    "contact_title": "Want to know more?",
+    "wechat_hint": "Long press to add on WeChat",
+    "private_note": "All transactions via private chat",
+    "share": "Share with friends",
+    "inquire": "Inquire",
+    "xinxin_price": "初心价"
+  },
+  "about": {
+    "title": "Love · Accompany · Move",
+    "tagline": "Carrying love and goodwill, letting beautiful things pass on",
+    "invite_only": "Invitation only",
+    "join_title": "Want to join?",
+    "join_subtitle": "Tell us your story — we read every message carefully",
+    "scan_hint": "Scan to reach us",
+    "or_ask_friend": "Or find someone already on the platform and ask them to introduce you"
+  },
+  "category": {
+    "all": "All",
+    "ceramics": "Ceramics",
+    "leather": "Leather",
+    "textile": "Textiles",
+    "food": "Food",
+    "handcraft": "Handcraft",
+    "service": "Services"
+  }
+}
