@@ -1,5 +1,5 @@
 # 第一阶段：构建
-FROM f3jjqjm5.mirror.aliyuncs.com/node:22-alpine AS builder
+FROM docker.m.daocloud.io/node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -11,8 +11,8 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# 第二阶段：运行（只保留必要文件，镜像更小）
-FROM f3jjqjm5.mirror.aliyuncs.com/node:22-alpine AS runner
+# 第二阶段：运行
+FROM docker.m.daocloud.io/node:22-alpine AS runner
 
 WORKDIR /app
 
