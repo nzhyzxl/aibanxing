@@ -3,21 +3,34 @@ import { useEffect, useState, useRef } from 'react'
 import { useWxAuth } from '@/lib/wx-auth'
 
 interface UnifiedShareProps {
-  // 分享卡片内容
   title: string
   desc: string
-  imgUrl: string
-  // 落地页：不含任何参数的原始 URL
-  pageUrl: string
+  imgUrl: string        // 必须是完整 https:// 绝对路径，或传空字符串
+  pageUrl: string       // 落地页，不含参数的原始 URL
   locale: string
-  // 显示样式
-  variant?: 'button' | 'text'   // button=橙色大按钮  text=文字链接
+  variant?: 'button' | 'text'
+}
+
+// 确保 imgUrl 是完整绝对路径，微信分享卡片必须
+function ensureAbsoluteUrl(url: string): string {
+  if (!url) return ''
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  if (typeof window !== 'undefined') return window.location.origin + url
+  return url
 }
 
 // 微信 JS-SDK 初始化（全局只做一次）
-let wxInitialized = false
+let wxReady = false
+let wxInitializing = false
+const wxReadyCallbacks: Array<() => void> = []
+
 async function initWxSdk(signUrl: string) {
-  if (wxInitialized) return
+  if (wxReady) return
+  if (wxInitializing) {
+    // 等待已有初始化完成
+    return new Promise<void>(resolve => wxReadyCallbacks.push(resolve))
+  }
+  wxInitializing = true
   try {
     const res = await fetch(`/api/wechat?url=${encodeURIComponent(signUrl)}`)
     const config = await res.json()
@@ -34,27 +47,39 @@ async function initWxSdk(signUrl: string) {
     }
 
     const wx = (window as any).wx
-    wx.config({
-      debug: false,
-      appId: config.appId,
-      timestamp: config.timestamp,
-      nonceStr: config.nonceStr,
-      signature: config.signature,
-      jsApiList: ['updateAppMessageShareData', 'updateTimelineShareData'],
+    await new Promise<void>(resolve => {
+      wx.config({
+        debug: false,
+        appId: config.appId,
+        timestamp: config.timestamp,
+        nonceStr: config.nonceStr,
+        signature: config.signature,
+        jsApiList: ['updateAppMessageShareData', 'updateTimelineShareData'],
+      })
+      wx.ready(() => {
+        wxReady = true
+        wxInitializing = false
+        wxReadyCallbacks.forEach(cb => cb())
+        wxReadyCallbacks.length = 0
+        resolve()
+      })
+      wx.error(() => {
+        wxInitializing = false
+        resolve()
+      })
     })
-    wxInitialized = true
-  } catch {}
+  } catch {
+    wxInitializing = false
+  }
 }
 
-// 更新微信分享卡片内容
 function updateWxShare(title: string, desc: string, imgUrl: string, link: string) {
   try {
     const wx = (window as any).wx
-    if (!wx?.ready) return
-    wx.ready(() => {
-      wx.updateAppMessageShareData({ title, desc, link, imgUrl })
-      wx.updateTimelineShareData({ title, link, imgUrl })
-    })
+    if (!wx || !wxReady) return
+    const safeImgUrl = ensureAbsoluteUrl(imgUrl)
+    wx.updateAppMessageShareData({ title, desc, link, imgUrl: safeImgUrl })
+    wx.updateTimelineShareData({ title, link, imgUrl: safeImgUrl })
   } catch {}
 }
 
@@ -65,61 +90,76 @@ export default function UnifiedShare({
   const [showGuide, setShowGuide] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const initialized = useRef(false)
+  const guideTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // 构建带 ref 的分享链接
   const buildShareUrl = (userId?: string) => {
     const base = pageUrl.split('?')[0]
     return userId ? `${base}?ref=${userId}` : base
   }
 
-  // 初始化微信JS-SDK，并更新卡片内容
+  // 初始化 SDK
   useEffect(() => {
     if (initialized.current) return
     initialized.current = true
     const run = async () => {
       await initWxSdk(window.location.href)
-      // 登录状态确定后再设置卡片链接
       const shareLink = buildShareUrl(user?.id)
       updateWxShare(title, desc, imgUrl, shareLink)
     }
     run()
-  }, []) // 只在挂载时执行一次
+  }, [])
 
-  // 用户登录状态变化时，更新微信卡片链接
+  // 登录状态变化时更新卡片
   useEffect(() => {
-    if (loading) return
+    if (loading || !wxReady) return
     const shareLink = buildShareUrl(user?.id)
     updateWxShare(title, desc, imgUrl, shareLink)
-  }, [user?.id, loading, title, desc, imgUrl])
+  }, [user?.id, loading])
+
+  // 清理引导计时器
+  useEffect(() => {
+    return () => {
+      if (guideTimerRef.current) clearTimeout(guideTimerRef.current)
+    }
+  }, [])
+
+  const closeGuide = () => {
+    setShowGuide(false)
+    if (guideTimerRef.current) {
+      clearTimeout(guideTimerRef.current)
+      guideTimerRef.current = null
+    }
+  }
 
   const handleShare = () => {
     if (loading) return
-
     if (!user) {
-      // 未登录：强制弹登录框
       setShowLoginModal(true)
       return
     }
-
-    // 已登录：执行分享
     doShare(user.id)
   }
 
   const doShare = (userId: string) => {
     const shareLink = buildShareUrl(userId)
-
-    // 微信环境：提示点右上角（微信不允许代码触发分享）
     const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
+
     if (isWeChat) {
-      // 更新卡片内容（确保用最新 ref 链接）
       updateWxShare(title, desc, imgUrl, shareLink)
       setShowGuide(true)
+      // 用户完成分享动作后会回到页面，8秒后自动关闭引导浮层
+      if (guideTimerRef.current) clearTimeout(guideTimerRef.current)
+      guideTimerRef.current = setTimeout(() => {
+        setShowGuide(false)
+        guideTimerRef.current = null
+      }, 8000)
       return
     }
 
-    // 非微信环境：Web Share API 或复制链接
     if (navigator.share) {
-      navigator.share({ title, text: desc, url: shareLink }).catch(() => copyLink(shareLink))
+      navigator.share({ title, text: desc, url: shareLink })
+        .then(() => {})
+        .catch(() => copyLink(shareLink))
     } else {
       copyLink(shareLink)
     }
@@ -133,7 +173,6 @@ export default function UnifiedShare({
 
   return (
     <>
-      {/* 分享按钮 */}
       {variant === 'button' ? (
         <button
           onClick={handleShare}
@@ -152,31 +191,44 @@ export default function UnifiedShare({
         </button>
       )}
 
-      {/* 微信环境分享引导浮层 */}
+      {/* 微信引导浮层 — 点任意处关闭，8秒自动关闭 */}
       {showGuide && (
         <div
           className="fixed inset-0 z-50 bg-black/60"
-          onClick={() => setShowGuide(false)}
+          onClick={closeGuide}
         >
-          {/* 右上角箭头引导 */}
-          <div className="absolute top-0 right-0 p-4 flex flex-col items-end gap-2">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-              <path d="M40 8 C40 8 20 8 8 8 M40 8 L32 2 M40 8 L32 14"
-                stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M40 8 Q40 28 40 40" stroke="white" strokeWidth="3"
-                strokeLinecap="round" strokeDasharray="4 4"/>
+          {/* 右上角箭头 */}
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-2 pointer-events-none">
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+              {/* 向右上的箭头 */}
+              <path d="M12 40 C20 32 36 16 44 10" stroke="white" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M44 10 L36 10 M44 10 L44 18" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <div className="bg-white rounded-2xl px-5 py-3 shadow-lg max-w-[200px]">
-              <p className="text-sm font-medium text-[#2C2420] text-center">
-                {locale === 'zh' ? '点右上角「…」' : 'Tap ··· above'}
-              </p>
-              <p className="text-xs text-[#9E9189] text-center mt-1">
-                {locale === 'zh' ? '选择「发送给朋友」或「分享到朋友圈」' : 'Send to friend or share to Moments'}
-              </p>
-            </div>
           </div>
-          <p className="absolute bottom-16 left-0 right-0 text-center text-white/70 text-sm">
-            {locale === 'zh' ? '点击任意处关闭' : 'Tap anywhere to close'}
+
+          {/* 说明卡片，右上角下方 */}
+          <div
+            className="absolute top-16 right-3 bg-white rounded-2xl px-5 py-4 shadow-xl max-w-[220px]"
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-sm font-semibold text-[#2C2420] text-center mb-1">
+              {locale === 'zh' ? '点右上角「···」' : 'Tap ··· in top right'}
+            </p>
+            <p className="text-xs text-[#9E9189] text-center leading-relaxed">
+              {locale === 'zh'
+                ? '选择「发送给朋友」或「分享到朋友圈」'
+                : 'Choose "Send to friend" or "Share to Moments"'}
+            </p>
+            <button
+              onClick={closeGuide}
+              className="w-full mt-3 text-xs text-[#9E9189] border border-[#E8DDD4] rounded-lg py-1.5 hover:bg-[#F5EFE6] transition-colors"
+            >
+              {locale === 'zh' ? '已分享，关闭' : 'Done, close'}
+            </button>
+          </div>
+
+          <p className="absolute bottom-10 left-0 right-0 text-center text-white/60 text-xs">
+            {locale === 'zh' ? '点击任意处关闭 · 8秒后自动关闭' : 'Tap anywhere or wait 8s to close'}
           </p>
         </div>
       )}
@@ -186,17 +238,14 @@ export default function UnifiedShare({
         <LoginModal
           locale={locale}
           onClose={() => setShowLoginModal(false)}
-          onLogin={() => {
-            setShowLoginModal(false)
-            // 登录后 wx-auth 会刷新页面，wx-auth 回调会带回当前页面
-          }}
+          onLogin={() => setShowLoginModal(false)}
           onSkip={() => {
             setShowLoginModal(false)
-            // 跳过登录：不带 ref 分享
             const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
             if (isWeChat) {
               updateWxShare(title, desc, imgUrl, pageUrl)
               setShowGuide(true)
+              guideTimerRef.current = setTimeout(() => setShowGuide(false), 8000)
             } else if (navigator.share) {
               navigator.share({ title, text: desc, url: pageUrl }).catch(() => copyLink(pageUrl))
             } else {
@@ -209,7 +258,6 @@ export default function UnifiedShare({
   )
 }
 
-// ── 登录弹窗 ──
 function LoginModal({ locale, onClose, onLogin, onSkip }: {
   locale: string
   onClose: () => void
@@ -217,7 +265,6 @@ function LoginModal({ locale, onClose, onLogin, onSkip }: {
   onSkip: () => void
 }) {
   const { login } = useWxAuth()
-
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -232,15 +279,12 @@ function LoginModal({ locale, onClose, onLogin, onSkip }: {
           </h3>
           <p className="text-sm text-[#9E9189] mt-2 leading-relaxed">
             {locale === 'zh'
-              ? '微信登录后，你的分享链接会带上专属标识。朋友通过你的链接成交后，手艺人会送上感谢红包 🧧'
+              ? '微信登录后，分享链接会带上你的专属标识。朋友通过你的链接成交后，手艺人会送上感谢红包 🧧'
               : 'Your share link carries your identity. Friends who buy through it earn you a thank-you gift.'}
           </p>
         </div>
         <button
-          onClick={() => {
-            login(window.location.pathname + window.location.search)
-            onLogin()
-          }}
+          onClick={() => { login(window.location.pathname + window.location.search); onLogin() }}
           className="w-full flex items-center justify-center gap-3 bg-[#07C160] text-white py-3.5 rounded-2xl font-medium hover:bg-[#06AD56] transition-colors mb-3"
         >
           <WechatSvg />
