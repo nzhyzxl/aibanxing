@@ -3,165 +3,111 @@ import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code')
-  const token = req.nextUrl.searchParams.get('state')
+  const stateRaw = req.nextUrl.searchParams.get('state') || ''
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL!
 
-  if (!code || !token) {
-    return new NextResponse(bindResultHtml('fail', '参数缺失，请重新扫码'), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' }
-    })
+  if (!code) {
+    return NextResponse.redirect(`${baseUrl}/zh?error=wechat_auth_failed`)
   }
+
+  let redirect = '/zh'
+  let ref = ''
+  try {
+    const state = JSON.parse(decodeURIComponent(stateRaw))
+    redirect = state.redirect || '/zh'
+    ref = state.ref || ''
+  } catch {}
 
   try {
     const supabaseAdmin = getSupabaseAdmin()
 
-    // Step 1: 验证 token 是否有效且未过期
-    const { data: bindToken, error: tokenError } = await supabaseAdmin
-      .from('wechat_bind_tokens')
-      .select('*')
-      .eq('token', token)
-      .eq('status', 'pending')
-      .gt('expires_at', new Date().toISOString())
-      .single()
-
-    if (tokenError || !bindToken) {
-      console.error('[bind-callback] token invalid:', { token, tokenError })
-      return new NextResponse(bindResultHtml('fail', '绑定链接已过期，请在后台重新生成'), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      })
-    }
-
-    // Step 2: 用 code 换 openid
+    // Step 1: code 换 access_token + openid
     const tokenRes = await fetch(
       `https://api.weixin.qq.com/sns/oauth2/access_token?appid=${process.env.NEXT_PUBLIC_WECHAT_APP_ID}&secret=${process.env.WECHAT_APP_SECRET}&code=${code}&grant_type=authorization_code`
     )
     const tokenData = await tokenRes.json()
-
-    console.log('[bind-callback] access_token response:', { openid: tokenData.openid, errcode: tokenData.errcode })
-
     if (!tokenData.openid) {
-      return new NextResponse(bindResultHtml('fail', '获取微信信息失败，请重试'), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      })
+      return NextResponse.redirect(`${baseUrl}/zh?error=wechat_auth_failed`)
     }
 
-    // Step 3: 获取微信昵称和头像（userinfo API 已废弃，可能返回空值）
-    let nickname = ''
-    let headimgurl = ''
-    try {
-      const userRes = await fetch(
-        `https://api.weixin.qq.com/sns/userinfo?access_token=${tokenData.access_token}&openid=${tokenData.openid}&lang=zh_CN`
-      )
-      const wxUser = await userRes.json()
-      nickname = wxUser.nickname || ''
-      headimgurl = wxUser.headimgurl || ''
-    } catch {
-      // userinfo 可能失败，不影响绑定流程
-      console.warn('[bind-callback] userinfo failed, continuing with openid only')
-    }
+    // Step 2: 获取用户昵称和头像
+    const userRes = await fetch(
+      `https://api.weixin.qq.com/sns/userinfo?access_token=${tokenData.access_token}&openid=${tokenData.openid}&lang=zh_CN`
+    )
+    const wxUser = await userRes.json()
 
-    // Step 4: 检查 openid 是否已被其他账号绑定
-    const { data: existingBind } = await supabaseAdmin
+    // Step 3: 查找或创建平台用户
+    const { data: existingUser } = await supabaseAdmin
       .from('users')
-      .select('id, name')
+      .select('id')
       .eq('wechat_openid', tokenData.openid)
-      .neq('id', bindToken.user_id)
       .single()
 
-    if (existingBind) {
-      return new NextResponse(bindResultHtml('fail', '该微信已绑定其他账号，请联系管理员'), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      })
+    let userId: string
+
+    if (existingUser) {
+      userId = existingUser.id
+      await supabaseAdmin
+        .from('users')
+        .update({ wechat_nickname: wxUser.nickname, wechat_avatar: wxUser.headimgurl })
+        .eq('id', userId)
+    } else {
+      const { data: newUser, error } = await supabaseAdmin
+        .from('users')
+        .insert({
+          email: `wx_${tokenData.openid}@aibanxing.placeholder`,
+          role: 'visitor',
+          name: wxUser.nickname || '微信用户',
+          wechat_openid: tokenData.openid,
+          wechat_nickname: wxUser.nickname,
+          wechat_avatar: wxUser.headimgurl,
+          status: 'active',
+        })
+        .select('id')
+        .single()
+
+      if (error || !newUser) {
+        return NextResponse.redirect(`${baseUrl}/zh?error=wechat_auth_failed`)
+      }
+      userId = newUser.id
     }
 
-    // Step 5: 更新用户的微信信息
-    const { error: userUpdateError } = await supabaseAdmin
-      .from('users')
-      .update({
-        wechat_openid: tokenData.openid,
-        wechat_nickname: nickname,
-        wechat_avatar: headimgurl,
-      })
-      .eq('id', bindToken.user_id)
+    // Step 4: 记录 ref_log（如果有引荐人）
+    if (ref && ref !== userId) {
+      const { data: referrer } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('id', ref)
+        .single()
 
-    if (userUpdateError) {
-      console.error('[bind-callback] user update failed:', userUpdateError)
-      return new NextResponse(bindResultHtml('fail', '更新用户信息失败，请重试'), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      })
+      if (referrer) {
+        await supabaseAdmin.from('ref_logs').insert({
+          ref_user_id: referrer.id,
+          visitor_user_id: userId,
+        })
+      }
     }
 
-    // Step 6: 更新 token 状态为 done
-    const { error: tokenUpdateError } = await supabaseAdmin
-      .from('wechat_bind_tokens')
-      .update({ status: 'done', openid: tokenData.openid })
-      .eq('token', token)
-
-    if (tokenUpdateError) {
-      console.error('[bind-callback] token update failed:', tokenUpdateError)
-      return new NextResponse(bindResultHtml('fail', '绑定状态更新失败，请重试'), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      })
-    }
-
-    console.log('[bind-callback] bind success for token:', token)
-    return new NextResponse(
-      bindResultHtml('success', `绑定成功！${nickname ? `欢迎 ${nickname}` : ''}，请回到电脑端继续操作`),
-      { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-    )
-  } catch (err) {
-    console.error('[bind-callback] error:', err)
-    return new NextResponse(bindResultHtml('fail', '服务异常，请重试'), {
-      headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    // Step 5: 写入 cookie，7天有效
+    const userPayload = JSON.stringify({
+      id: userId,
+      name: wxUser.nickname || '微信用户',
+      avatar: wxUser.headimgurl || '',
+      openid: tokenData.openid,
     })
+
+    const response = NextResponse.redirect(`${baseUrl}${redirect}`)
+    response.cookies.set('wx_user', btoa(encodeURIComponent(userPayload)), {
+      httpOnly: false,
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+      sameSite: 'none',  // 微信 webview 跨域跳转需要 none
+      secure: true,       // sameSite=none 必须配合 secure
+    })
+
+    return response
+  } catch (err) {
+    console.error('WeChat auth error:', err)
+    return NextResponse.redirect(`${baseUrl}/zh?error=wechat_auth_failed`)
   }
-}
-
-// 返回给手机端的简单页面
-function bindResultHtml(status: 'success' | 'fail', message: string) {
-  const emoji = status === 'success' ? '🎉' : '❌'
-  const color = status === 'success' ? '#07C160' : '#F5222D'
-  const bg = status === 'success' ? '#F6FFED' : '#FFF2F0'
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>${status === 'success' ? '绑定成功' : '绑定失败'}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, sans-serif;
-      background: ${bg};
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      padding: 40px 32px;
-      text-align: center;
-      max-width: 320px;
-      width: 100%;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    }
-    .emoji { font-size: 56px; margin-bottom: 16px; }
-    .title { font-size: 20px; font-weight: 600; color: ${color}; margin-bottom: 12px; }
-    .msg { font-size: 14px; color: #666; line-height: 1.6; }
-    .brand { margin-top: 32px; font-size: 12px; color: #999; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <div class="emoji">${emoji}</div>
-    <div class="title">${status === 'success' ? '绑定成功' : '绑定失败'}</div>
-    <div class="msg">${message}</div>
-    <div class="brand">爱伴行 AiBanXing</div>
-  </div>
-</body>
-</html>`
 }
