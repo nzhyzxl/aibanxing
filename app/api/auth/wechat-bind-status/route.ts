@@ -19,13 +19,19 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (error || !data) {
-    return NextResponse.json({ status: 'not_found' })
+    return NextResponse.json({ status: 'not_found' }, {
+      headers: { 'Cache-Control': 'no-store' },
+    })
   }
 
   // 检查是否过期
   if (new Date(data.expires_at) < new Date()) {
-    return NextResponse.json({ status: 'expired' })
+    return NextResponse.json({ status: 'expired' }, {
+      headers: { 'Cache-Control': 'no-store' },
+    })
   }
 
-  return NextResponse.json({ status: data.status })
+  return NextResponse.json({ status: data.status }, {
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }

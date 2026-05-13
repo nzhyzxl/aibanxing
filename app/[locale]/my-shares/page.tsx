@@ -71,15 +71,25 @@ export default function MySharesPage({ params }: { params: { locale: string } })
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* 用户信息 */}
         <div className="flex items-center gap-4 mb-8">
-          {user.avatar ? (
-            <Image src={user.avatar} alt={user.name} width={56} height={56} className="rounded-full border-2 border-[#F5A623]" />
-          ) : (
-            <div className="w-14 h-14 rounded-full bg-[#FEF6E9] flex items-center justify-center text-[#854F0B] text-xl font-serif font-bold border-2 border-[#F5A623]">
+          <div className="flex-shrink-0 w-14 h-14 rounded-full border-2 border-[#F5A623] overflow-hidden bg-[#FEF6E9]">
+            {user.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  // 头像加载失败时显示首字母
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                }}
+              />
+            ) : null}
+            <div className={`w-full h-full flex items-center justify-center text-[#854F0B] text-xl font-serif font-bold ${user.avatar ? 'hidden' : ''}`}>
               {user.name[0]}
             </div>
-          )}
-          <div>
-            <p className="font-serif font-semibold text-lg text-[#2C2420]">{user.name}</p>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-serif font-semibold text-lg text-[#2C2420] truncate">{user.name}</p>
             <p className="text-xs text-[#9E9189]">爱伴行分享者</p>
           </div>
         </div>

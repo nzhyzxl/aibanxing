@@ -8,6 +8,23 @@ const nextConfig = {
         protocol: 'https',
         hostname: '*.aliyuncs.com',
       },
+      {
+        // 微信头像域名
+        protocol: 'http',
+        hostname: 'thirdwx.qlogo.cn',
+      },
+      {
+        protocol: 'https',
+        hostname: 'thirdwx.qlogo.cn',
+      },
+      {
+        protocol: 'http',
+        hostname: 'wx.qlogo.cn',
+      },
+      {
+        protocol: 'https',
+        hostname: 'wx.qlogo.cn',
+      },
     ],
   },
 }

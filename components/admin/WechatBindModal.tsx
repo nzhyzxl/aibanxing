@@ -58,7 +58,7 @@ export default function WechatBindModal({ open, onClose, onSuccess }: WechatBind
       // 开始轮询
       pollRef.current = setInterval(async () => {
         try {
-          const r = await fetch(`/api/auth/wechat-bind-status?token=${data.token}`)
+          const r = await fetch(`/api/auth/wechat-bind-status?token=${data.token}&t=${Date.now()}`, { cache: 'no-store' })
           const result = await r.json()
           console.log('[bind-poll] status:', result.status)
 
