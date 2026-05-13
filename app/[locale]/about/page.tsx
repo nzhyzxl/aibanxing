@@ -34,7 +34,7 @@ export default async function AboutPage({ params }: { params: { locale: string }
         </p>
         <div className="w-10 h-0.5 bg-[#F5A623] mx-auto mb-6" />
         <p className="font-serif text-xl text-[#6B4C35] max-w-lg mx-auto leading-relaxed">
-          {zh ? '「用爱与善意，陪伴美好流传」' : '"Carrying love and goodwill, letting beautiful things pass on."'}
+          {zh ? '「用爱与善意，陪伴美好流转」' : '"Carrying love and goodwill, letting beautiful things pass on."'}
         </p>
       </section>
 
@@ -62,7 +62,7 @@ export default async function AboutPage({ params }: { params: { locale: string }
             <div>
               <p className="font-serif text-lg leading-[2] text-[#2C2420]">
                 {zh
-                  ? '我相信，商业是最大的慈善。缺少商业闭环，再多的善意也难以持续。爱伴行，就是为了让美好的东西真正流传起来。'
+                  ? '我相信，商业是最大的慈善。缺少商业闭环，再多的善意也难以持续。爱伴行，就是为了让美好的东西真正流转起来。'
                   : "I believe commerce is the greatest form of charity. Without a sustainable model, even the best intentions fade. AiBanXing exists to let beautiful things actually reach the people who will cherish them."}
               </p>
             </div>

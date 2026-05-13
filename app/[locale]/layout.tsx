@@ -56,8 +56,8 @@ function Footer({ locale }: { locale: string }) {
   return (
     <footer className="bg-cream border-t border-warm-border/40 py-12 text-center">
       <p className="font-serif text-xl text-warm-charcoal mb-2">爱伴行</p>
-      <p className="text-sm text-warm-gray">用爱与善意，陪伴美好流传</p>
-      <p className="text-xs text-warm-gray/60 mt-6">© 2025 爱伴行 AiBanXing</p>
+      <p className="text-sm text-warm-gray">用爱与善意，陪伴美好流转</p>
+      <p className="text-xs text-warm-gray/60 mt-6">© 2026 爱伴行 AiBanXing</p>
     </footer>
   )
 }

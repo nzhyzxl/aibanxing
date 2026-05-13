@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: '爱伴行 AiBanXing',
-  description: '用爱与善意，陪伴美好流传',
+  description: '用爱与善意，陪伴美好流转',
   openGraph: {
     title: '爱伴行 AiBanXing',
     description: '每一件好物，都有人为它作证',
