@@ -43,7 +43,7 @@ async function initWxForPage(pageHref: string): Promise<boolean> {
     // 每次都重新调用 wx.config（微信要求每个页面都要重新配置）
     await new Promise<void>((resolve) => {
       wx.config({
-        debug: false,
+        debug: true,
         appId: config.appId,
         timestamp: config.timestamp,
         nonceStr: config.nonceStr,
