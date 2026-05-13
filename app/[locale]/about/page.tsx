@@ -1,8 +1,25 @@
 import Link from 'next/link'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
-export default function AboutPage({ params }: { params: { locale: string } }) {
+async function getSiteSettings() {
+  try {
+    const { data } = await getSupabaseAdmin()
+      .from('site_settings')
+      .select('key, value')
+    const map: Record<string, string> = {}
+    ;(data || []).forEach(({ key, value }: { key: string; value: string }) => {
+      map[key] = value
+    })
+    return map
+  } catch {
+    return {}
+  }
+}
+
+export default async function AboutPage({ params }: { params: { locale: string } }) {
   const { locale } = params
   const zh = locale === 'zh'
+  const settings = await getSiteSettings()
 
   return (
     <div className="min-h-screen bg-[#FDFAF5]">
@@ -24,12 +41,13 @@ export default function AboutPage({ params }: { params: { locale: string } }) {
       {/* 创立故事 */}
       <section className="max-w-5xl mx-auto px-4 py-16">
         <div className="grid md:grid-cols-2 gap-12 items-center">
-          {/* 左侧图片占位 */}
-          <div className="rounded-2xl overflow-hidden aspect-[4/5]"
-            style={{ background: 'linear-gradient(160deg, #C4956A 0%, #E8C99A 50%, #F5EFE6 100%)' }}>
-            <div className="w-full h-full flex items-center justify-center">
-              <p className="text-[#854F0B]/60 text-sm font-medium">匠人工作场景</p>
-            </div>
+          {/* 左侧图片 */}
+          <div className="rounded-2xl overflow-hidden aspect-[4/5]">
+            <img
+              src={settings.about_workspace_image || 'https://aibanxing.oss-cn-hangzhou.aliyuncs.com/uploads/fba0222feb668fe38436162b4434816a.jpg'}
+              alt="匠人工作场景"
+              className="w-full h-full object-cover"
+            />
           </div>
 
           {/* 右侧文字 */}
@@ -183,9 +201,11 @@ export default function AboutPage({ params }: { params: { locale: string } }) {
 
         <div className="flex flex-col items-center gap-3 mb-8">
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E8C99A] inline-block">
-            <div className="w-28 h-28 bg-[#F5EFE6] rounded-xl flex items-center justify-center border-2 border-dashed border-[#E8C99A]">
-              <span className="text-[#9E9189] text-sm">扫码联系</span>
-            </div>
+            <img
+              src={settings.about_wechat_qr || 'https://aibanxing.oss-cn-hangzhou.aliyuncs.com/uploads/64ef9df45b9fcd94ef7ab892b63343e2.jpg'}
+              alt="微信二维码"
+              className="w-28 h-28 rounded-xl object-cover"
+            />
           </div>
           <p className="text-sm text-[#6B4C35] font-medium">
             {zh ? '扫码联系我们' : 'Scan to reach us'}
