@@ -5,13 +5,12 @@ import { useWxAuth } from '@/lib/wx-auth'
 interface UnifiedShareProps {
   title: string
   desc: string
-  imgUrl: string        // 必须是完整 https:// 绝对路径
-  pageUrl: string       // 落地页不含参数的原始 URL
+  imgUrl: string
+  pageUrl: string
   locale: string
   variant?: 'button' | 'text'
 }
 
-// 确保是绝对路径
 function toAbsoluteUrl(url: string): string {
   if (!url) return ''
   if (url.startsWith('http://') || url.startsWith('https://')) return url
@@ -19,92 +18,60 @@ function toAbsoluteUrl(url: string): string {
   return url
 }
 
-// 签名用的 URL：去掉 hash，保留 path+query
-function getSignUrl(): string {
-  if (typeof window === 'undefined') return ''
-  return window.location.href.split('#')[0]
-}
-
-// 全局 SDK 状态
-let sdkState: 'idle' | 'loading' | 'ready' | 'error' = 'idle'
-const sdkCallbacks: Array<() => void> = []
-
-async function ensureSdkReady(): Promise<boolean> {
-  if (sdkState === 'ready') return true
-  if (sdkState === 'error') return false
-
-  if (sdkState === 'loading') {
-    return new Promise(resolve => {
-      sdkCallbacks.push(() => resolve(sdkState === 'ready'))
-    })
-  }
-
-  sdkState = 'loading'
+// 每次页面 URL 变化都重新签名，不缓存状态
+async function initWxForPage(pageHref: string): Promise<boolean> {
   try {
-    // 签名 URL 必须去掉 # 后内容，且和当前页面完全匹配
-    const signUrl = getSignUrl()
+    // 签名 URL 必须去掉 # 后的内容
+    const signUrl = pageHref.split('#')[0]
     const res = await fetch(`/api/wechat?url=${encodeURIComponent(signUrl)}`)
     const config = await res.json()
+    if (!config.appId || config.error) return false
 
-    if (!config.appId || config.error) {
-      sdkState = 'error'
-      sdkCallbacks.forEach(cb => cb())
-      sdkCallbacks.length = 0
-      return false
-    }
-
-    // 动态加载 SDK
+    // 动态加载 SDK（只加载一次）
     if (!(window as any).wx) {
       await new Promise<void>((resolve, reject) => {
         const s = document.createElement('script')
         s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js'
         s.onload = () => resolve()
-        s.onerror = () => reject(new Error('Failed to load wx sdk'))
+        s.onerror = () => reject()
         document.head.appendChild(s)
       })
     }
 
-    await new Promise<void>((resolve, reject) => {
-      const wx = (window as any).wx
+    const wx = (window as any).wx
+
+    // 每次都重新调用 wx.config（微信要求每个页面都要重新配置）
+    await new Promise<void>((resolve) => {
       wx.config({
-        debug: true,
+        debug: false,
         appId: config.appId,
         timestamp: config.timestamp,
         nonceStr: config.nonceStr,
         signature: config.signature,
         jsApiList: ['updateAppMessageShareData', 'updateTimelineShareData'],
       })
-      wx.ready(() => {
-        sdkState = 'ready'
-        sdkCallbacks.forEach(cb => cb())
-        sdkCallbacks.length = 0
-        resolve()
-      })
+      wx.ready(() => resolve())
       wx.error((err: any) => {
-        console.warn('[WeChat SDK] config error:', err)
-        sdkState = 'error'
-        sdkCallbacks.forEach(cb => cb())
-        sdkCallbacks.length = 0
-        reject(new Error('wx.config error'))
+        console.warn('[wx.config error]', JSON.stringify(err))
+        resolve() // 即使失败也 resolve，不阻塞后续流程
       })
     })
     return true
   } catch (e) {
-    sdkState = 'error'
-    sdkCallbacks.forEach(cb => cb())
-    sdkCallbacks.length = 0
+    console.warn('[initWxForPage error]', e)
     return false
   }
 }
 
-// 更新分享卡片内容
-function setWxShareContent(title: string, desc: string, imgUrl: string, link: string) {
-  if (sdkState !== 'ready') return
+function applyWxShare(title: string, desc: string, imgUrl: string, link: string) {
   try {
     const wx = (window as any).wx
+    if (!wx) return
     const absImg = toAbsoluteUrl(imgUrl)
-    wx.updateAppMessageShareData({ title, desc, link, imgUrl: absImg })
-    wx.updateTimelineShareData({ title, link, imgUrl: absImg })
+    wx.ready(() => {
+      wx.updateAppMessageShareData({ title, desc, link, imgUrl: absImg })
+      wx.updateTimelineShareData({ title, link, imgUrl: absImg })
+    })
   } catch {}
 }
 
@@ -115,29 +82,35 @@ export default function UnifiedShare({
   const [showGuide, setShowGuide] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const guideTimer = useRef<NodeJS.Timeout | null>(null)
-  const sdkInitDone = useRef(false)
+  const currentHref = useRef('')
 
   const buildShareUrl = (userId?: string) => {
     const base = pageUrl.split('?')[0]
     return userId ? `${base}?ref=${userId}` : base
   }
 
-  // 页面加载后初始化 SDK，并配置分享卡片
+  // 页面加载完成后初始化，用 setTimeout 确保 URL 已经稳定
   useEffect(() => {
-    if (sdkInitDone.current) return
-    sdkInitDone.current = true
-    ensureSdkReady().then(ok => {
-      if (!ok) return
-      const shareLink = buildShareUrl(user?.id)
-      setWxShareContent(title, desc, imgUrl, shareLink)
-    })
-  }, [])
+    const timer = setTimeout(async () => {
+      const href = window.location.href
+      if (href === currentHref.current) return // URL 没变，不重复初始化
+      currentHref.current = href
 
-  // 登录状态变化后更新卡片链接（带上 ref）
+      const ok = await initWxForPage(href)
+      if (!ok) return
+
+      const shareLink = buildShareUrl(user?.id)
+      applyWxShare(title, desc, imgUrl, shareLink)
+    }, 300) // 等 300ms 让页面 URL 稳定
+
+    return () => clearTimeout(timer)
+  }, [pageUrl]) // pageUrl 变化时重新初始化
+
+  // 登录状态变化后更新分享链接
   useEffect(() => {
-    if (loading || sdkState !== 'ready') return
+    if (loading) return
     const shareLink = buildShareUrl(user?.id)
-    setWxShareContent(title, desc, imgUrl, shareLink)
+    applyWxShare(title, desc, imgUrl, shareLink)
   }, [user?.id, loading])
 
   useEffect(() => {
@@ -152,7 +125,7 @@ export default function UnifiedShare({
   }
 
   const openGuide = (shareLink: string) => {
-    setWxShareContent(title, desc, imgUrl, shareLink)
+    applyWxShare(title, desc, imgUrl, shareLink)
     setShowGuide(true)
     if (guideTimer.current) clearTimeout(guideTimer.current)
     guideTimer.current = setTimeout(closeGuide, 8000)
@@ -164,10 +137,9 @@ export default function UnifiedShare({
     doShare(user.id)
   }
 
-  const doShare = (userId: string, withRef = true) => {
-    const shareLink = withRef ? buildShareUrl(userId) : pageUrl
+  const doShare = (userId: string) => {
+    const shareLink = buildShareUrl(userId)
     const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
-
     if (isWeChat) {
       openGuide(shareLink)
       return
