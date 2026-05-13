@@ -11,9 +11,23 @@ interface WechatShareProps {
 
 export default function WechatShare({ title, desc, imgUrl, link, locale }: WechatShareProps) {
   useEffect(() => {
+    // 设置页面 meta og:image 作为兜底
+    if (imgUrl) {
+      let ogImage = document.querySelector('meta[property="og:image"]') as HTMLMetaElement
+      if (!ogImage) {
+        ogImage = document.createElement('meta')
+        ogImage.setAttribute('property', 'og:image')
+        document.head.appendChild(ogImage)
+      }
+      ogImage.setAttribute('content', imgUrl)
+    }
+  }, [imgUrl])
+
+  useEffect(() => {
     const initWechat = async () => {
       try {
-        const res = await fetch(`/api/wechat?url=${encodeURIComponent(window.location.href)}`)
+        const signatureUrl = window.location.href.split('#')[0]
+        const res = await fetch(`/api/wechat?url=${encodeURIComponent(signatureUrl)}`)
         const config = await res.json()
 
         // 动态加载微信SDK
@@ -27,21 +41,43 @@ export default function WechatShare({ title, desc, imgUrl, link, locale }: Wecha
         }
 
         const wx = (window as any).wx
+
         wx.config({
           debug: false,
           appId: config.appId,
           timestamp: config.timestamp,
           nonceStr: config.nonceStr,
           signature: config.signature,
-          jsApiList: ['updateAppMessageShareData', 'updateTimelineShareData'],
+          jsApiList: [
+            'updateAppMessageShareData',
+            'updateTimelineShareData',
+            'onMenuShareAppMessage',
+            'onMenuShareTimeline',
+          ],
+        })
+
+        wx.error((err: any) => {
+          console.error('[wechat-share] wx.config error:', err)
         })
 
         wx.ready(() => {
-          wx.updateAppMessageShareData({ title, desc, link, imgUrl })
-          wx.updateTimelineShareData({ title, link, imgUrl })
+          const shareData = {
+            title,
+            desc,
+            link,
+            imgUrl: imgUrl || `${window.location.origin}/share-default.png`,
+          }
+
+          // 新 API
+          wx.updateAppMessageShareData(shareData)
+          wx.updateTimelineShareData({ title, link, imgUrl: shareData.imgUrl })
+
+          // 旧 API 兜底（兼容性更好，尤其对分享图片的支持）
+          wx.onMenuShareAppMessage(shareData)
+          wx.onMenuShareTimeline({ title, link, imgUrl: shareData.imgUrl })
         })
       } catch (e) {
-        // 非微信环境，静默失败
+        console.error('[wechat-share] init error:', e)
       }
     }
 
@@ -50,10 +86,10 @@ export default function WechatShare({ title, desc, imgUrl, link, locale }: Wecha
 
   const handleShare = () => {
     if (navigator.share) {
-      navigator.share({ title, text: desc, url: link })
+      navigator.share({ title, text: desc, url: link }).catch(() => {})
     } else {
       navigator.clipboard.writeText(link).then(() => {
-        alert(locale === 'zh' ? '链接已复制' : 'Link copied')
+        alert(locale === 'zh' ? '链接已复制，去微信粘贴给好友吧' : 'Link copied')
       })
     }
   }

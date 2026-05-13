@@ -8,6 +8,13 @@ export const metadata: Metadata = {
     title: '爱伴行 AiBanXing',
     description: '每一件好物，都有人为它作证',
     type: 'website',
+    images: [
+      {
+        url: `${process.env.NEXT_PUBLIC_BASE_URL}/share-default.png`,
+        width: 300,
+        height: 300,
+      },
+    ],
   },
 }
 
