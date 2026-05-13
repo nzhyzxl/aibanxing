@@ -17,8 +17,6 @@ const CATEGORY_LABELS: Record<string, { zh: string; en: string }> = {
   service: { zh: '服务', en: 'Services' },
 }
 
-const SWIPE_THRESHOLD = 50
-
 export default function ProductDetailPage({
   params,
 }: {
@@ -31,38 +29,41 @@ export default function ProductDetailPage({
   const [activeImage, setActiveImage] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  // Swipe state
-  const [swipeOffset, setSwipeOffset] = useState(0)
-  const [isSwiping, setIsSwiping] = useState(false)
-  const touchStartX = useRef(0)
+  // ── 图片轮播逻辑 ──
+  const trackRef = useRef<HTMLDivElement>(null)
+  const [dragging, setDragging] = useState(false)
+  const [dragStartX, setDragStartX] = useState(0)
+  const [dragOffset, setDragOffset] = useState(0)
   const imageCount = product?.images?.length || 0
 
   const goToImage = useCallback((index: number) => {
     if (imageCount === 0) return
     setActiveImage(((index % imageCount) + imageCount) % imageCount)
+    setDragOffset(0)
   }, [imageCount])
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX
-    setIsSwiping(true)
-    setSwipeOffset(0)
+  const onTouchStart = (e: React.TouchEvent) => {
+    setDragging(true)
+    setDragStartX(e.touches[0].clientX)
+    setDragOffset(0)
   }
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isSwiping) return
-    setSwipeOffset(e.touches[0].clientX - touchStartX.current)
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!dragging) return
+    setDragOffset(e.touches[0].clientX - dragStartX)
   }
 
-  const handleTouchEnd = () => {
-    setIsSwiping(false)
-    if (Math.abs(swipeOffset) > SWIPE_THRESHOLD) {
-      if (swipeOffset > 0) {
-        goToImage(activeImage - 1)
-      } else {
-        goToImage(activeImage + 1)
-      }
+  const onTouchEnd = () => {
+    setDragging(false)
+    const width = trackRef.current?.offsetWidth || 300
+    // 超过宽度25%才切换，减少误触
+    if (dragOffset < -width * 0.25) {
+      goToImage(activeImage + 1)
+    } else if (dragOffset > width * 0.25) {
+      goToImage(activeImage - 1)
+    } else {
+      setDragOffset(0)
     }
-    setSwipeOffset(0)
   }
 
   useEffect(() => {
@@ -149,50 +150,63 @@ export default function ProductDetailPage({
 
           {/* 左侧：图片区 */}
           <div>
-            {/* 主图 — 支持左右滑动切换 */}
+            {/* 主图轮播 */}
             <div
-              className="relative aspect-square bg-[#F5EFE6] rounded-2xl overflow-hidden mb-3 touch-pan-y select-none"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+              ref={trackRef}
+              className="relative aspect-square bg-[#F5EFE6] rounded-2xl overflow-hidden mb-3 select-none touch-pan-y"
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onTouchEnd}
             >
+              {/* 图片轨道：所有图片横向排列 */}
               <div
-                className="w-full h-full flex transition-transform duration-300"
+                className="flex h-full"
                 style={{
-                  transform: `translateX(${isSwiping ? swipeOffset : 0}px)`,
-                  transition: isSwiping ? 'none' : 'transform 0.3s ease-out',
+                  width: `${imageCount * 100}%`,
+                  transform: `translateX(calc(${-(activeImage * 100)}% / ${imageCount} + ${dragOffset}px / ${imageCount}))`,
+                  transition: dragging ? 'none' : 'transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                  willChange: 'transform',
                 }}
               >
-                {product.images?.[activeImage] ? (
-                  <Image
-                    src={product.images[activeImage]}
-                    alt={name}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    priority
-                    draggable={false}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[#C8A882] text-5xl">
-                    🌿
+                {(product.images || []).map((img, i) => (
+                  <div
+                    key={i}
+                    className="relative flex-shrink-0"
+                    style={{ width: `${100 / imageCount}%` }}
+                  >
+                    <Image
+                      src={img}
+                      alt={`${name} ${i + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      priority={i === 0}
+                      draggable={false}
+                    />
                   </div>
-                )}
+                ))}
               </div>
 
-              {/* 左右箭头（多图时显示） */}
+              {/* 空状态 */}
+              {imageCount === 0 && (
+                <div className="w-full h-full flex items-center justify-center text-[#C8A882] text-5xl">
+                  🌿
+                </div>
+              )}
+
+              {/* 左右箭头（桌面端，多图时显示） */}
               {imageCount > 1 && (
                 <>
                   <button
                     onClick={() => goToImage(activeImage - 1)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-[#6B4C35] hover:bg-white transition-colors"
+                    className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/85 shadow-md items-center justify-center text-[#6B4C35] text-xl hover:bg-white hover:scale-105 transition-all"
                     aria-label="Previous image"
                   >
                     ‹
                   </button>
                   <button
                     onClick={() => goToImage(activeImage + 1)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 shadow-sm flex items-center justify-center text-[#6B4C35] hover:bg-white transition-colors"
+                    className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/85 shadow-md items-center justify-center text-[#6B4C35] text-xl hover:bg-white hover:scale-105 transition-all"
                     aria-label="Next image"
                   >
                     ›
@@ -200,53 +214,64 @@ export default function ProductDetailPage({
                 </>
               )}
 
+              {/* 品类标签 */}
               {catLabel && (
-                <span className="absolute top-3 left-3 bg-white/90 text-[#6B4C35] text-xs px-2.5 py-1 rounded-full font-medium">
+                <span className="absolute top-3 left-3 bg-white/90 text-[#6B4C35] text-xs px-2.5 py-1 rounded-full font-medium pointer-events-none">
                   {locale === 'zh' ? catLabel.zh : catLabel.en}
+                </span>
+              )}
+
+              {/* 图片计数（右上角，多图时显示） */}
+              {imageCount > 1 && (
+                <span className="absolute top-3 right-3 bg-black/30 text-white text-xs px-2 py-0.5 rounded-full pointer-events-none">
+                  {activeImage + 1} / {imageCount}
                 </span>
               )}
             </div>
 
-            {/* 指示器圆点 + 缩略图 */}
+            {/* 指示器圆点 */}
             {imageCount > 1 && (
-              <>
-                {/* 圆点指示器 */}
-                <div className="flex items-center justify-center gap-1.5 mb-3">
-                  {product.images!.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setActiveImage(i)}
-                      className={`rounded-full transition-all ${
-                        activeImage === i
-                          ? 'w-2 h-2 bg-[#F5A623]'
-                          : 'w-1.5 h-1.5 bg-[#D4C8BC]'
-                      }`}
-                      aria-label={`Image ${i + 1}`}
-                    />
-                  ))}
-                </div>
+              <div className="flex items-center justify-center gap-1.5 mb-3">
+                {(product.images || []).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goToImage(i)}
+                    className="rounded-full transition-all duration-300"
+                    style={{
+                      width: activeImage === i ? 20 : 6,
+                      height: 6,
+                      background: activeImage === i ? '#F5A623' : '#D4C8BC',
+                    }}
+                    aria-label={`Image ${i + 1}`}
+                  />
+                ))}
+              </div>
+            )}
 
-                {/* 缩略图列表 */}
-                <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-                  {product.images!.map((img, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setActiveImage(i)}
-                      className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${
-                        activeImage === i ? 'border-[#F5A623]' : 'border-transparent'
-                      }`}
-                    >
-                      <Image
-                        src={img}
-                        alt={`${name} ${i + 1}`}
-                        width={64}
-                        height={64}
-                        className="object-cover w-full h-full"
-                      />
-                    </button>
-                  ))}
-                </div>
-              </>
+            {/* 缩略图列表 */}
+            {imageCount > 1 && (
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {(product.images || []).map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => goToImage(i)}
+                    className="flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden transition-all duration-200"
+                    style={{
+                      border: `2px solid ${activeImage === i ? '#F5A623' : 'transparent'}`,
+                      opacity: activeImage === i ? 1 : 0.6,
+                      transform: activeImage === i ? 'scale(1)' : 'scale(0.95)',
+                    }}
+                  >
+                    <Image
+                      src={img}
+                      alt={`${name} ${i + 1}`}
+                      width={64}
+                      height={64}
+                      className="object-cover w-full h-full"
+                    />
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 

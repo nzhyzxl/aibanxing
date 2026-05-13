@@ -33,7 +33,7 @@ export function WxAuthProvider({ children }: { children: React.ReactNode }) {
         .find(c => c.trim().startsWith('wx_user='))
         ?.split('=')[1]
       if (raw) {
-        setUser(JSON.parse(atob(decodeURIComponent(raw))))
+        setUser(JSON.parse(decodeURIComponent(atob(raw))))
       }
     } catch {}
     setLoading(false)

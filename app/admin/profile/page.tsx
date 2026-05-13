@@ -1,11 +1,22 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Form, Input, Select, Button, message, Typography, Divider, Card } from 'antd'
+import { Form, Input, Select, Button, message, Typography, Divider, Card, Avatar, Space, Tag } from 'antd'
+import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import ImageUploader from '@/components/admin/ImageUploader'
 import type { User } from '@/lib/supabase'
 
 const { Title, Text } = Typography
+
+const categoryLabels: Record<string, string> = {
+  ceramics: '陶瓷',
+  leather: '皮具',
+  textile: '织物',
+  food: '食品',
+  handcraft: '手作',
+  service: '服务',
+}
 
 const categoryOptions = [
   { value: 'ceramics', label: '陶瓷' },
@@ -19,9 +30,11 @@ const categoryOptions = [
 export default function ProfilePage() {
   const [form] = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
   const [avatarUrls, setAvatarUrls] = useState<string[]>([])
   const [qrUrls, setQrUrls] = useState<string[]>([])
   const [user, setUser] = useState<User | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -70,19 +83,65 @@ export default function ProfilePage() {
     }
   }
 
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    await supabase.auth.signOut()
+    router.push('/admin/login')
+  }
+
+  const roleLabel = user?.role === 'admin' ? '管理员' : '手艺人'
+  const roleColor = user?.role === 'admin' ? '#F5A623' : '#07C160'
+  const catLabel = user?.category ? categoryLabels[user.category] : null
+
   return (
-    <div style={{ maxWidth: 600 }}>
-      <Title level={4}>我的资料</Title>
+    <div style={{ maxWidth: 640 }}>
+      {/* 个人头像展示区 */}
+      <Card style={{ marginBottom: 24, borderRadius: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Avatar
+            size={72}
+            src={avatarUrls[0]}
+            icon={!avatarUrls[0] ? <UserOutlined /> : undefined}
+            style={{ backgroundColor: '#E8C99A', flexShrink: 0 }}
+          >
+            {!avatarUrls[0] && user?.name?.[0]}
+          </Avatar>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Text strong style={{ fontSize: 18 }}>{user?.name || '-'}</Text>
+              <Tag color={roleColor} style={{ margin: 0 }}>{roleLabel}</Tag>
+              {catLabel && <Tag color="orange">{catLabel}</Tag>}
+            </div>
+            <Text type="secondary" style={{ fontSize: 13 }}>{user?.email}</Text>
+            {user?.city && (
+              <Text type="secondary" style={{ fontSize: 13, display: 'block' }}>
+                📍 {user.city}
+              </Text>
+            )}
+          </div>
+          <Button
+            icon={<LogoutOutlined />}
+            onClick={handleLogout}
+            loading={loggingOut}
+            danger
+          >
+            退出登录
+          </Button>
+        </div>
+      </Card>
+
+      <Title level={4}>编辑资料</Title>
       <Text type="secondary" style={{ display: 'block', marginBottom: 24 }}>
         这里的信息会展示在你的主页上，访客通过它认识你
       </Text>
 
       <Form form={form} layout="vertical" onFinish={onSave}>
-
         <Form.Item label="头像">
           <ImageUploader
             value={avatarUrls}
-            onChange={setAvatarUrls}
+            onChange={(urls) => {
+              setAvatarUrls(urls)
+            }}
             maxCount={1}
             label="上传头像"
           />
@@ -147,9 +206,14 @@ export default function ProfilePage() {
         </Form.Item>
 
         <Form.Item>
-          <Button type="primary" htmlType="submit" loading={saving} size="large">
-            保存资料
-          </Button>
+          <Space>
+            <Button type="primary" htmlType="submit" loading={saving} size="large">
+              保存资料
+            </Button>
+            <Button icon={<LogoutOutlined />} onClick={handleLogout} loading={loggingOut} size="large">
+              退出登录
+            </Button>
+          </Space>
         </Form.Item>
       </Form>
     </div>

@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
     })
 
     const response = NextResponse.redirect(`${baseUrl}${redirect}`)
-    response.cookies.set('wx_user', Buffer.from(userPayload).toString('base64'), {
+    response.cookies.set('wx_user', btoa(encodeURIComponent(userPayload)), {
       httpOnly: false,
       maxAge: 60 * 60 * 24 * 7,
       path: '/',
