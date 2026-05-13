@@ -8,8 +8,8 @@ PROJECT_DIR="/var/www/aibanxing"
 CONTAINER_NAME="aibanxing"
 IMAGE_NAME="aibanxing"
 PORT=3000
-HEALTH_URL="http://10.88.0.11:${PORT}"
-KEEP_IMAGES=3             # 保留最近几个版本的镜像
+HEALTH_URL="http://localhost:${PORT}"          # 修正：宿主机通过 localhost 访问映射端口
+KEEP_IMAGES=3
 
 cd "$PROJECT_DIR"
 
@@ -39,27 +39,31 @@ podman build -t "${IMAGE_NAME}:${VERSION}" -t "${IMAGE_NAME}:latest" \
   --build-arg NEXT_PUBLIC_BASE_URL="$NEXT_PUBLIC_BASE_URL" \
   "$PROJECT_DIR"
 
-# ── 4. 健康检查函数 ──
+# ── 4. 健康检查函数（增强版） ──
 health_check() {
-  local max_attempts=12
+  local url="$1"
+  local max_attempts="${2:-24}"   # 最多重试24次，每次5秒，共120秒
   local attempt=1
+
   while [ $attempt -le $max_attempts ]; do
-    if curl -s "$HEALTH_URL" > /dev/null 2>&1; then
+    # -s 静默，-f 将 HTTP 错误码（4xx/5xx）当作命令失败，-o /dev/null 丢弃输出
+    if curl -sf -o /dev/null "$url"; then
+      echo "    ✓ 服务就绪 (${attempt}/${max_attempts})"
       return 0
     fi
     echo "    等待服务就绪... (${attempt}/${max_attempts})"
     sleep 5
     attempt=$((attempt + 1))
   done
+  echo "    ✗ 健康检查超时 (${max_attempts} 次尝试，累计 $((max_attempts * 5)) 秒)"
   return 1
 }
 
 # ── 5. 滚动更新 ──
-# 先启动新容器（不同端口），验证通过后再切换
 NEW_CONTAINER="${CONTAINER_NAME}_${VERSION}"
 TEMP_PORT=$((PORT + 1))
 
-echo ">>> 启动新容器验证..."
+echo ">>> 启动新容器验证 (端口 ${TEMP_PORT})..."
 podman run -d \
   --name "$NEW_CONTAINER" \
   --restart unless-stopped \
@@ -69,11 +73,16 @@ podman run -d \
   --log-opt max-file=3 \
   "${IMAGE_NAME}:latest"
 
-# 等待新容器健康检查
+# 对新容器进行健康检查（使用临时端口）
 echo ">>> 验证新容器..."
-if ! curl -s "http://10.88.0.11:${TEMP_PORT}" > /dev/null 2>&1; then
-  echo "    新容器未就绪，等待健康检查..."
-  sleep 10
+if health_check "http://localhost:${TEMP_PORT}" 24; then
+  echo "    新容器通过健康检查，准备切换流量"
+else
+  echo "!!! 新容器未通过健康检查，终止部署并保留旧容器"
+  podman logs --tail 30 "$NEW_CONTAINER" 2>/dev/null || true
+  podman stop "$NEW_CONTAINER" 2>/dev/null || true
+  podman rm "$NEW_CONTAINER" 2>/dev/null || true
+  exit 1
 fi
 
 # ── 6. 切换流量 ──
@@ -94,12 +103,13 @@ podman run -d \
   "${IMAGE_NAME}:latest"
 
 # ── 7. 清理临时容器 ──
+echo ">>> 清理临时容器..."
 podman stop "$NEW_CONTAINER" 2>/dev/null || true
 podman rm "$NEW_CONTAINER" 2>/dev/null || true
 
 # ── 8. 最终验证 ──
 echo ">>> 最终验证..."
-if health_check; then
+if health_check "$HEALTH_URL" 24; then
   echo "=== 部署成功 $(date) ==="
 else
   echo "!!! 新容器未通过健康检查，回滚到上一版本..."
@@ -117,14 +127,19 @@ else
       --log-opt max-file=3 \
       "${IMAGE_NAME}:${ROLLBACK_IMAGE}"
     echo "=== 已回滚到版本 ${ROLLBACK_IMAGE} ==="
+  else
+    echo "!!! 没有可用的旧版本镜像，回滚失败"
+    exit 1
   fi
-  podman logs "$CONTAINER_NAME" --tail 30
+  # 尝试输出当前主容器日志（若存在）
+  if podman ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+    podman logs --tail 30 "$CONTAINER_NAME" 2>/dev/null || true
+  fi
   exit 1
 fi
 
 # ── 9. 清理旧镜像（保留最近 N 个） ──
 echo ">>> 清理旧镜像..."
-# 列出所有版本号镜像（排除 latest），按时间排序，删除旧的
 OLD_IMAGES=$(podman images --format '{{.Tag}}' "$IMAGE_NAME" \
   | grep -E '^[0-9]{8}-[0-9]{6}$' \
   | sort -r \
@@ -135,7 +150,6 @@ for old_tag in $OLD_IMAGES; do
   podman rmi "${IMAGE_NAME}:${old_tag}" 2>/dev/null || true
 done
 
-# 清理悬空镜像和构建缓存
 podman image prune -f
 podman builder prune -f --filter until=24h
 
