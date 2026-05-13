@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import UnifiedShare from '@/components/frontend/UnifiedShare'
 import type { Product, User } from '@/lib/supabase'
 
 type ProductWithArtisan = Product & { artisan: User }
@@ -90,12 +91,22 @@ export default function HomePage({ params }: { params: { locale: string } }) {
           <p className="text-[#9E9189] text-sm md:text-base mb-8">
             {locale === 'zh' ? '每一件，都有人为它作证' : 'Every piece, personally vouched for'}
           </p>
-          <Link
-            href={`/${locale}/artisans`}
-            className="inline-flex items-center gap-2 bg-[#F5A623] text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-[#E09510] transition-colors"
-          >
-            {locale === 'zh' ? '探索所有匠人' : 'Explore artisans'} →
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-2">
+            <Link
+              href={`/${locale}/artisans`}
+              className="inline-flex items-center gap-2 bg-[#F5A623] text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-[#E09510] transition-colors"
+            >
+              {locale === 'zh' ? '探索所有匠人' : 'Explore artisans'} →
+            </Link>
+            <UnifiedShare
+              title={locale === 'zh' ? '爱伴行 · 遇见有温度的好物' : 'AiBanXing · Things made with love'}
+              desc={locale === 'zh' ? '每一件好物，都有人为它作证' : 'Every piece, personally vouched for'}
+              imgUrl=""
+              pageUrl={typeof window !== 'undefined' ? window.location.origin + '/' + locale : ''}
+              locale={locale}
+              variant="text"
+            />
+          </div>
         </div>
       </section>
 

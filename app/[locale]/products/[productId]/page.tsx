@@ -3,7 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import WechatShare from '@/components/frontend/WechatShare'
+import UnifiedShare from '@/components/frontend/UnifiedShare'
 import type { Product, User, Endorsement } from '@/lib/supabase'
 
 type EndorsementWithEndorser = Endorsement & { endorser: User }
@@ -397,11 +397,11 @@ export default function ProductDetailPage({
             </div>
 
             {/* 分享 */}
-            <WechatShare
+            <UnifiedShare
               title={`${name} · ${artisan.name}`}
               desc={description || (locale === 'zh' ? `${artisan.name} 在爱伴行的作品` : `${artisan.name}'s work on AiBanXing`)}
               imgUrl={product.images?.[0] || ''}
-              link={`${shareUrl}?ref=${artisan.id}`}
+              pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/products/${product.id}`}
               locale={locale}
             />
           </div>

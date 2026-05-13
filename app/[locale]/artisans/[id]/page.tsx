@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import TrustChain from '@/components/frontend/TrustChain'
-import WechatShare from '@/components/frontend/WechatShare'
+import UnifiedShare from '@/components/frontend/UnifiedShare'
 import type { User, Product, Endorsement } from '@/lib/supabase'
 
 type EndorsementWithEndorser = Endorsement & { endorser: User }
@@ -147,20 +147,14 @@ export default function ArtisanProfilePage({
 
         {/* 分享按钮（靠近顶部） */}
         <div className="mb-6">
-          <button
-            onClick={() => {
-              const url = `${shareUrl}?ref=${artisan.id}`
-              navigator.clipboard?.writeText(url)
-                .then(() => alert(locale === 'zh' ? '链接已复制，快去分享吧！' : 'Link copied!'))
-                .catch(() => {})
-            }}
-            className="text-sm text-[#F5A623] font-medium flex items-center gap-1 hover:underline"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
-            </svg>
-            {locale === 'zh' ? '分享给朋友的朋友 →' : 'Share with a friend →'}
-          </button>
+          <UnifiedShare
+            title={`${artisan.name} · ${artisan.category || '匠人'}`}
+            desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
+            imgUrl={coverImage || ''}
+            pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/artisans/${artisan.id}`}
+            locale={locale}
+            variant="text"
+          />
         </div>
 
         {/* 信任链 */}
@@ -215,11 +209,11 @@ export default function ArtisanProfilePage({
 
         {/* 底部分享 */}
         <div className="pb-8">
-          <WechatShare
+          <UnifiedShare
             title={`${artisan.name} · ${artisan.category || '匠人'}`}
             desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
             imgUrl={coverImage || ''}
-            link={`${shareUrl}?ref=${artisan.id}`}
+            pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/artisans/${artisan.id}`}
             locale={locale}
           />
         </div>
