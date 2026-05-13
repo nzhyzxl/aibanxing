@@ -1,5 +1,5 @@
 # 第一阶段：构建
-FROM node:22-alpine AS builder
+FROM f3jjqjm5.mirror.aliyuncs.com/node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY . .
 RUN npm run build
 
 # 第二阶段：运行（只保留必要文件，镜像更小）
-FROM node:22-alpine AS runner
+FROM f3jjqjm5.mirror.aliyuncs.com/node:22-alpine AS runner
 
 WORKDIR /app
 
