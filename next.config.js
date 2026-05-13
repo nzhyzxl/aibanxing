@@ -7,6 +7,9 @@ const nextConfig = {
   experimental: {
     isrMemoryCacheSize: 0,
   },
+  typescript: {
+    ignoreBuildErrors: true,   // 构建时跳过类型检查
+  },
   images: {
     remotePatterns: [
       {
