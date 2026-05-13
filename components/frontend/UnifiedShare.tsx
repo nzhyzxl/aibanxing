@@ -67,7 +67,7 @@ async function ensureSdkReady(): Promise<boolean> {
     await new Promise<void>((resolve, reject) => {
       const wx = (window as any).wx
       wx.config({
-        debug: false,
+        debug: true,
         appId: config.appId,
         timestamp: config.timestamp,
         nonceStr: config.nonceStr,
