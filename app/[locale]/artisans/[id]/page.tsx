@@ -151,16 +151,21 @@ export default function ArtisanProfilePage({
           </p>
         )}
 
-        {/* 分享按钮（靠近顶部） */}
+        {/* 分享入口（靠近顶部，点击滚动到底部分享按钮） */}
         <div className="mb-6">
-          <UnifiedShare
-            title={`${artisan.name} · ${artisan.category || '匠人'}`}
-            desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
-            imgUrl={coverImage || ''}
-            pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/artisans/${artisan.id}`}
-            locale={locale}
-            variant="text"
-          />
+          <a
+            href="#share-section"
+            className="text-sm text-[#F5A623] font-medium flex items-center gap-1 hover:underline"
+            onClick={e => {
+              e.preventDefault()
+              document.getElementById('share-section')?.scrollIntoView({ behavior: 'smooth' })
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
+            </svg>
+            {locale === 'zh' ? '分享给朋友的朋友 →' : 'Share with a friend →'}
+          </a>
         </div>
 
         {/* 信任链 */}
@@ -214,7 +219,7 @@ export default function ArtisanProfilePage({
         </section>
 
         {/* 底部分享 */}
-        <div className="pb-8">
+        <div className="pb-8" id="share-section">
           <UnifiedShare
             title={`${artisan.name} · ${artisan.category || '匠人'}`}
             desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
