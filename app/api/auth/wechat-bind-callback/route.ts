@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Step 5: 更新用户的微信信息
-    await supabaseAdmin
+    const { error: userUpdateError } = await supabaseAdmin
       .from('users')
       .update({
         wechat_openid: tokenData.openid,
@@ -84,14 +84,27 @@ export async function GET(req: NextRequest) {
       })
       .eq('id', bindToken.user_id)
 
+    if (userUpdateError) {
+      console.error('[bind-callback] user update failed:', userUpdateError)
+      return new NextResponse(bindResultHtml('fail', '更新用户信息失败，请重试'), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      })
+    }
+
     // Step 6: 更新 token 状态为 done
-    const { error: updateError } = await supabaseAdmin
+    const { error: tokenUpdateError } = await supabaseAdmin
       .from('wechat_bind_tokens')
       .update({ status: 'done', openid: tokenData.openid })
       .eq('token', token)
 
-    console.log('[bind-callback] token updated to done:', { token, error: updateError })
+    if (tokenUpdateError) {
+      console.error('[bind-callback] token update failed:', tokenUpdateError)
+      return new NextResponse(bindResultHtml('fail', '绑定状态更新失败，请重试'), {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      })
+    }
 
+    console.log('[bind-callback] bind success for token:', token)
     return new NextResponse(
       bindResultHtml('success', `绑定成功！${nickname ? `欢迎 ${nickname}` : ''}，请回到电脑端继续操作`),
       { headers: { 'Content-Type': 'text/html; charset=utf-8' } }

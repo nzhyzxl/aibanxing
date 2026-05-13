@@ -7,12 +7,20 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // 服务端（API Routes 用，绕过 RLS，只在服务端使用）
+// 注意：Next.js 14 会缓存 fetch 请求，即使 route 标记了 force-dynamic。
+// Supabase 客户端底层用 fetch，所以必须注入自定义 fetch 禁用缓存。
 export const getSupabaseAdmin = () => {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceRoleKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
   }
-  return createClient(supabaseUrl, serviceRoleKey)
+  return createClient(supabaseUrl, serviceRoleKey, {
+    global: {
+      fetch: (input, init) => {
+        return fetch(input, { ...init, cache: 'no-store' })
+      },
+    },
+  })
 }
 
 // ── 类型定义 ──
