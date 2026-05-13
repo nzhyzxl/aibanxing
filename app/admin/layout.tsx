@@ -22,24 +22,35 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false)
   const [checking, setChecking] = useState(true)
   const [hasWechat, setHasWechat] = useState(true)
+  const [role, setRole] = useState<string | null>(null)
   const [showBindModal, setShowBindModal] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
+
+  const adminOnlyPaths = ['/admin/artisans', '/admin/invitations']
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session && pathname !== '/admin/login') {
         router.replace('/admin/login')
+      } else if (session?.user) {
+        const { data } = await supabase
+          .from('users').select('wechat_openid, role').eq('id', session.user.id).single()
+        setHasWechat(!!data?.wechat_openid)
+        setRole(data?.role || null)
+        setChecking(false)
       } else {
         setChecking(false)
-        if (session?.user) {
-          const { data } = await supabase
-            .from('users').select('wechat_openid').eq('id', session.user.id).single()
-          setHasWechat(!!data?.wechat_openid)
-        }
       }
     })
   }, [pathname, router])
+
+  // 手艺人不能访问管理类页面
+  useEffect(() => {
+    if (role === 'artisan' && adminOnlyPaths.some(p => pathname.startsWith(p))) {
+      router.replace('/admin/dashboard')
+    }
+  }, [role, pathname, router])
 
   if (checking) {
     return (
@@ -49,14 +60,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     )
   }
 
-  const menuItems = [
-    { key: '/admin/dashboard', icon: <DashboardOutlined />, label: '控制台' },
-    { key: '/admin/artisans', icon: <UserOutlined />, label: '匠人管理' },
-    { key: '/admin/invitations', icon: <MailOutlined />, label: '邀请审核' },
-    { key: '/admin/products', icon: <AppstoreOutlined />, label: '产品管理' },
-    { key: '/admin/transactions', icon: <GiftOutlined />, label: '成交记录' },
-    { key: '/admin/profile', icon: <SettingOutlined />, label: '我的资料' },
+  const allMenuItems = [
+    { key: '/admin/dashboard', icon: <DashboardOutlined />, label: '控制台', roles: ['admin', 'artisan'] },
+    { key: '/admin/artisans', icon: <UserOutlined />, label: '匠人管理', roles: ['admin'] },
+    { key: '/admin/invitations', icon: <MailOutlined />, label: '邀请审核', roles: ['admin'] },
+    { key: '/admin/products', icon: <AppstoreOutlined />, label: '产品管理', roles: ['admin', 'artisan'] },
+    { key: '/admin/transactions', icon: <GiftOutlined />, label: '成交记录', roles: ['admin', 'artisan'] },
+    { key: '/admin/profile', icon: <SettingOutlined />, label: '我的资料', roles: ['admin', 'artisan'] },
   ]
+
+  const menuItems = allMenuItems.filter(item => role && item.roles.includes(role))
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
