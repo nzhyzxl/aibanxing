@@ -28,10 +28,18 @@ export default function SettingsPage() {
     fetch('/api/admin/settings')
       .then(r => r.json())
       .then(data => {
-        setSettings(data)
-        const v: Record<string, string> = {}
-        data.forEach((s: Setting) => { v[s.key] = s.value || '' })
-        setValues(v)
+        if (Array.isArray(data)) {
+          setSettings(data)
+          const v: Record<string, string> = {}
+          data.forEach((s: Setting) => { v[s.key] = s.value || '' })
+          setValues(v)
+        } else {
+          console.error('[settings] unexpected response:', data)
+        }
+        setLoading(false)
+      })
+      .catch(e => {
+        console.error('[settings] fetch error:', e)
         setLoading(false)
       })
   }, [])
