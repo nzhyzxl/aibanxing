@@ -22,20 +22,29 @@ const WxAuthContext = createContext<WxAuthContext>({
   logout: () => {},
 })
 
+function readWxUserCookie(): WxUser | null {
+  try {
+    // 安全分割：找到 wx_user= 后取剩余全部内容（避免 base64 里的 = 被截断）
+    const cookies = document.cookie.split(';')
+    const entry = cookies.find(c => c.trim().startsWith('wx_user='))
+    if (!entry) return null
+    const raw = entry.trim().slice('wx_user='.length)
+    if (!raw) return null
+    // 写入时是 btoa(encodeURIComponent(json))，所以解码是 decodeURIComponent(atob(raw))
+    const decoded = decodeURIComponent(atob(raw))
+    return JSON.parse(decoded)
+  } catch {
+    return null
+  }
+}
+
 export function WxAuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<WxUser | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    try {
-      const raw = document.cookie
-        .split(';')
-        .find(c => c.trim().startsWith('wx_user='))
-        ?.split('=')[1]
-      if (raw) {
-        setUser(JSON.parse(decodeURIComponent(atob(raw))))
-      }
-    } catch {}
+    const wxUser = readWxUserCookie()
+    setUser(wxUser)
     setLoading(false)
   }, [])
 

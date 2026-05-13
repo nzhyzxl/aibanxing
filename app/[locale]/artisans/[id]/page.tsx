@@ -10,22 +10,6 @@ import type { User, Product, Endorsement } from '@/lib/supabase'
 
 type EndorsementWithEndorser = Endorsement & { endorser: User }
 
-const catLabels: Record<string, { zh: string; en: string }> = {
-  ceramics: { zh: '陶瓷', en: 'Ceramics' },
-  leather: { zh: '皮具', en: 'Leather' },
-  textile: { zh: '织物', en: 'Textiles' },
-  food: { zh: '食品', en: 'Food' },
-  handcraft: { zh: '手作', en: 'Handcraft' },
-  service: { zh: '服务', en: 'Services' },
-}
-
-const categoryLabel = (cat: string | undefined, locale: string) => {
-  if (!cat) return ''
-  const labels = catLabels[cat]
-  if (!labels) return cat
-  return locale === 'zh' ? labels.zh : labels.en
-}
-
 export default function ArtisanProfilePage({
   params
 }: {
@@ -114,46 +98,52 @@ export default function ArtisanProfilePage({
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/${locale}/artisans/${artisan.id}`
     : ''
-  const coverImage = products[0]?.images?.[0] || artisan.avatar_url
+  const coverImage = artisan.cover_image_url || products[0]?.images?.[0] || artisan.avatar_url
 
   return (
     <div className="min-h-screen bg-[#FDFAF5]">
-      {/* Hero */}
+      {/* Hero：背景图 + 匠人信息叠在图内底部 */}
       <div className="relative w-full overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #C4956A 0%, #E8C99A 60%, #F5EFE6 100%)', minHeight: 220 }}>
+        style={{ background: 'linear-gradient(135deg, #C4956A 0%, #E8C99A 60%, #F5EFE6 100%)', minHeight: 280 }}>
         {coverImage && (
           <Image src={coverImage} alt={artisan.name} fill
-            className="object-cover opacity-60" sizes="100vw" />
+            className="object-cover opacity-70" sizes="100vw" priority />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-      </div>
+        {/* 渐变遮罩：顶部透明，底部深色，让文字清晰可读 */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-      {/* 匠人信息区 */}
-      <div className="max-w-2xl mx-auto px-4">
-        {/* 头像（叠在hero底部） */}
-        <div className="flex items-end gap-4 -mt-10 mb-4 relative z-10">
-          <div className="w-20 h-20 rounded-full border-4 border-white shadow-md overflow-hidden bg-[#E8C99A] flex items-center justify-center flex-shrink-0">
-            {artisan.avatar_url ? (
-              <Image src={artisan.avatar_url} alt={artisan.name} width={80} height={80}
-                className="object-cover w-full h-full" />
-            ) : (
-              <span className="text-[#854F0B] text-2xl font-serif font-bold">{artisan.name[0]}</span>
-            )}
-          </div>
-          <div className="pb-1">
-            <h1 className="font-serif text-2xl font-bold text-[#2C2420]">{artisan.name}</h1>
-            <div className="flex flex-wrap items-center gap-2 mt-1">
-              {artisan.category && (
-                <span className="text-xs bg-[#F5A623] text-white px-2.5 py-0.5 rounded-full">
-                  {categoryLabel(artisan.category, locale)}
-                </span>
+        {/* 匠人信息：沉在背景图内底部 */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 max-w-2xl mx-auto">
+          <div className="flex items-end gap-4">
+            {/* 头像 */}
+            <div className="w-20 h-20 rounded-full border-3 border-white/80 shadow-lg overflow-hidden bg-[#E8C99A] flex items-center justify-center flex-shrink-0">
+              {artisan.avatar_url ? (
+                <Image src={artisan.avatar_url} alt={artisan.name} width={80} height={80}
+                  className="object-cover w-full h-full" />
+              ) : (
+                <span className="text-[#854F0B] text-2xl font-serif font-bold">{artisan.name[0]}</span>
               )}
-              {city && (
-                <span className="text-xs text-[#9E9189]">📍 {city}</span>
-              )}
+            </div>
+            {/* 名字和标签 */}
+            <div className="pb-1">
+              <h1 className="font-serif text-2xl font-bold text-white drop-shadow-md">{artisan.name}</h1>
+              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                {artisan.category && (
+                  <span className="text-xs bg-[#F5A623] text-white px-2.5 py-0.5 rounded-full">
+                    {artisan.category}
+                  </span>
+                )}
+                {city && (
+                  <span className="text-xs text-white/80">📍 {city}</span>
+                )}
+              </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* 正文区域 */}
+      <div className="max-w-2xl mx-auto px-4 pt-5">
 
         {bio && (
           <p className="font-serif italic text-[#6B4C35] text-base leading-relaxed mb-3">
@@ -164,7 +154,7 @@ export default function ArtisanProfilePage({
         {/* 分享按钮（靠近顶部） */}
         <div className="mb-6">
           <UnifiedShare
-            title={`${artisan.name} · ${categoryLabel(artisan.category, locale) || '匠人'}`}
+            title={`${artisan.name} · ${artisan.category || '匠人'}`}
             desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
             imgUrl={coverImage || ''}
             pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/artisans/${artisan.id}`}
@@ -226,7 +216,7 @@ export default function ArtisanProfilePage({
         {/* 底部分享 */}
         <div className="pb-8">
           <UnifiedShare
-            title={`${artisan.name} · ${categoryLabel(artisan.category, locale) || '匠人'}`}
+            title={`${artisan.name} · ${artisan.category || '匠人'}`}
             desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
             imgUrl={coverImage || ''}
             pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/artisans/${artisan.id}`}

@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const [loggingOut, setLoggingOut] = useState(false)
   const [avatarUrls, setAvatarUrls] = useState<string[]>([])
   const [qrUrls, setQrUrls] = useState<string[]>([])
+  const [coverUrls, setCoverUrls] = useState<string[]>([])
   const [user, setUser] = useState<User | null>(null)
   const router = useRouter()
 
@@ -58,6 +59,7 @@ export default function ProfilePage() {
         })
         if (data.avatar_url) setAvatarUrls([data.avatar_url])
         if (data.wechat_qr_url) setQrUrls([data.wechat_qr_url])
+        if (data.cover_image_url) setCoverUrls([data.cover_image_url])
       }
     }
     loadProfile()
@@ -72,6 +74,7 @@ export default function ProfilePage() {
         ...values,
         avatar_url: avatarUrls[0] || null,
         wechat_qr_url: qrUrls[0] || null,
+        cover_image_url: coverUrls[0] || null,
       })
       .eq('id', user.id)
 
@@ -200,6 +203,33 @@ export default function ProfilePage() {
               <img src={qrUrls[0]} alt="微信二维码预览" style={{ width: 120, height: 120, objectFit: 'contain' }} />
               <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
                 请确认二维码清晰可识别
+              </Text>
+            </Card>
+          )}
+        </Form.Item>
+
+        <Form.Item
+          label={
+            <span>
+              主页封面图
+              <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                不上传则自动使用第一个产品图
+              </Text>
+            </span>
+          }
+        >
+          <ImageUploader
+            value={coverUrls}
+            onChange={setCoverUrls}
+            maxCount={1}
+            label="上传主页封面图"
+          />
+          {coverUrls[0] && (
+            <Card size="small" style={{ marginTop: 8, maxWidth: 300 }}>
+              <img src={coverUrls[0]} alt="封面图预览"
+                style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 6 }} />
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
+                建议使用横向宽图，比例 16:9 或 2:1
               </Text>
             </Card>
           )}
