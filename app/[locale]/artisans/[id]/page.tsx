@@ -10,6 +10,22 @@ import type { User, Product, Endorsement } from '@/lib/supabase'
 
 type EndorsementWithEndorser = Endorsement & { endorser: User }
 
+const catLabels: Record<string, { zh: string; en: string }> = {
+  ceramics: { zh: '陶瓷', en: 'Ceramics' },
+  leather: { zh: '皮具', en: 'Leather' },
+  textile: { zh: '织物', en: 'Textiles' },
+  food: { zh: '食品', en: 'Food' },
+  handcraft: { zh: '手作', en: 'Handcraft' },
+  service: { zh: '服务', en: 'Services' },
+}
+
+const categoryLabel = (cat: string | undefined, locale: string) => {
+  if (!cat) return ''
+  const labels = catLabels[cat]
+  if (!labels) return cat
+  return locale === 'zh' ? labels.zh : labels.en
+}
+
 export default function ArtisanProfilePage({
   params
 }: {
@@ -129,7 +145,7 @@ export default function ArtisanProfilePage({
             <div className="flex flex-wrap items-center gap-2 mt-1">
               {artisan.category && (
                 <span className="text-xs bg-[#F5A623] text-white px-2.5 py-0.5 rounded-full">
-                  {artisan.category}
+                  {categoryLabel(artisan.category, locale)}
                 </span>
               )}
               {city && (
@@ -148,7 +164,7 @@ export default function ArtisanProfilePage({
         {/* 分享按钮（靠近顶部） */}
         <div className="mb-6">
           <UnifiedShare
-            title={`${artisan.name} · ${artisan.category || '匠人'}`}
+            title={`${artisan.name} · ${categoryLabel(artisan.category, locale) || '匠人'}`}
             desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
             imgUrl={coverImage || ''}
             pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/artisans/${artisan.id}`}
@@ -210,7 +226,7 @@ export default function ArtisanProfilePage({
         {/* 底部分享 */}
         <div className="pb-8">
           <UnifiedShare
-            title={`${artisan.name} · ${artisan.category || '匠人'}`}
+            title={`${artisan.name} · ${categoryLabel(artisan.category, locale) || '匠人'}`}
             desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
             imgUrl={coverImage || ''}
             pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/artisans/${artisan.id}`}
