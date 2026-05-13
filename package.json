@@ -21,7 +21,8 @@
     "react": "^18",
     "react-dom": "^18",
     "react-image-crop": "^11.0.5",
-    "weixin-js-sdk": "^1.6.0"
+    "weixin-js-sdk": "^1.6.0",
+    "sharp": "^0.33.0"
   },
   "devDependencies": {
     "@types/node": "^20",
