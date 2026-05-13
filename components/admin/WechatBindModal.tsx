@@ -34,11 +34,9 @@ export default function WechatBindModal({ open, onClose, onSuccess }: WechatBind
     setToken('')
 
     try {
-      // 获取当前 session token
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { setStatus('error'); return }
 
-      // 调用后台接口生成绑定 token
       const res = await fetch('/api/auth/wechat-bind', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${session.access_token}` },
@@ -47,8 +45,8 @@ export default function WechatBindModal({ open, onClose, onSuccess }: WechatBind
       if (!data.bindUrl) { setStatus('error'); return }
 
       setToken(data.token)
+      console.log('[bind] token:', data.token, 'bindUrl:', data.bindUrl)
 
-      // 生成二维码图片
       const qr = await QRCode.toDataURL(data.bindUrl, {
         width: 200,
         margin: 2,
@@ -59,17 +57,26 @@ export default function WechatBindModal({ open, onClose, onSuccess }: WechatBind
 
       // 开始轮询
       pollRef.current = setInterval(async () => {
-        const r = await fetch(`/api/auth/wechat-bind-status?token=${data.token}`)
-        const result = await r.json()
+        try {
+          const r = await fetch(`/api/auth/wechat-bind-status?token=${data.token}`)
+          const result = await r.json()
+          console.log('[bind-poll] status:', result.status)
 
-        if (result.status === 'done') {
-          stopPoll()
-          setStatus('success')
-          message.success('微信绑定成功 🎉')
-          setTimeout(() => { onSuccess(); onClose() }, 1500)
-        } else if (result.status === 'expired') {
-          stopPoll()
-          setStatus('expired')
+          if (result.status === 'done') {
+            stopPoll()
+            setStatus('success')
+            message.success('微信绑定成功 🎉')
+            setTimeout(() => { onSuccess(); onClose() }, 1500)
+          } else if (result.status === 'expired') {
+            stopPoll()
+            setStatus('expired')
+          } else if (result.status === 'not_found') {
+            stopPoll()
+            setStatus('error')
+            console.error('[bind-poll] token not found:', data.token)
+          }
+        } catch (e) {
+          console.error('[bind-poll] fetch error:', e)
         }
       }, 2000)
 

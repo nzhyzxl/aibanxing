@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
       .single()
 
     if (tokenError || !bindToken) {
+      console.error('[bind-callback] token invalid:', { token, tokenError })
       return new NextResponse(bindResultHtml('fail', '绑定链接已过期，请在后台重新生成'), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       })
@@ -36,17 +37,28 @@ export async function GET(req: NextRequest) {
     )
     const tokenData = await tokenRes.json()
 
+    console.log('[bind-callback] access_token response:', { openid: tokenData.openid, errcode: tokenData.errcode })
+
     if (!tokenData.openid) {
       return new NextResponse(bindResultHtml('fail', '获取微信信息失败，请重试'), {
         headers: { 'Content-Type': 'text/html; charset=utf-8' }
       })
     }
 
-    // Step 3: 获取微信昵称和头像
-    const userRes = await fetch(
-      `https://api.weixin.qq.com/sns/userinfo?access_token=${tokenData.access_token}&openid=${tokenData.openid}&lang=zh_CN`
-    )
-    const wxUser = await userRes.json()
+    // Step 3: 获取微信昵称和头像（userinfo API 已废弃，可能返回空值）
+    let nickname = ''
+    let headimgurl = ''
+    try {
+      const userRes = await fetch(
+        `https://api.weixin.qq.com/sns/userinfo?access_token=${tokenData.access_token}&openid=${tokenData.openid}&lang=zh_CN`
+      )
+      const wxUser = await userRes.json()
+      nickname = wxUser.nickname || ''
+      headimgurl = wxUser.headimgurl || ''
+    } catch {
+      // userinfo 可能失败，不影响绑定流程
+      console.warn('[bind-callback] userinfo failed, continuing with openid only')
+    }
 
     // Step 4: 检查 openid 是否已被其他账号绑定
     const { data: existingBind } = await supabaseAdmin
@@ -67,23 +79,25 @@ export async function GET(req: NextRequest) {
       .from('users')
       .update({
         wechat_openid: tokenData.openid,
-        wechat_nickname: wxUser.nickname,
-        wechat_avatar: wxUser.headimgurl,
+        wechat_nickname: nickname,
+        wechat_avatar: headimgurl,
       })
       .eq('id', bindToken.user_id)
 
     // Step 6: 更新 token 状态为 done
-    await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from('wechat_bind_tokens')
       .update({ status: 'done', openid: tokenData.openid })
       .eq('token', token)
 
+    console.log('[bind-callback] token updated to done:', { token, error: updateError })
+
     return new NextResponse(
-      bindResultHtml('success', `绑定成功！欢迎 ${wxUser.nickname}，请回到电脑端继续操作`),
+      bindResultHtml('success', `绑定成功！${nickname ? `欢迎 ${nickname}` : ''}，请回到电脑端继续操作`),
       { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
     )
   } catch (err) {
-    console.error('Bind callback error:', err)
+    console.error('[bind-callback] error:', err)
     return new NextResponse(bindResultHtml('fail', '服务异常，请重试'), {
       headers: { 'Content-Type': 'text/html; charset=utf-8' }
     })
@@ -104,8 +118,8 @@ function bindResultHtml(status: 'success' | 'fail', message: string) {
   <title>${status === 'success' ? '绑定成功' : '绑定失败'}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
-      font-family: -apple-system, sans-serif; 
+    body {
+      font-family: -apple-system, sans-serif;
       background: ${bg};
       min-height: 100vh;
       display: flex;

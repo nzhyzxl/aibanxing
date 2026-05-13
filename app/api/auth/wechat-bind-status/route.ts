@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/auth/wechat-bind-status?token=xxx
 // PC端轮询，检查手机是否已扫码绑定
 export async function GET(req: NextRequest) {
