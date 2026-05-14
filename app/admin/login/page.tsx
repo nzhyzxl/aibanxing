@@ -28,8 +28,9 @@ export default function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      padding: '0 16px',
     }}>
-      <Card style={{ width: 360, borderRadius: 16 }}>
+      <Card style={{ maxWidth: 360, width: '90%', borderRadius: 16 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Title level={3} style={{ marginBottom: 4 }}>爱伴行</Title>
           <Text type="secondary">后台管理系统</Text>

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { Layout, Menu, Spin, Alert } from 'antd'
+import { Layout, Menu, Spin, Alert, Grid } from 'antd'
 import {
   UserOutlined,
   AppstoreOutlined,
@@ -22,6 +22,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false)
   const [checking, setChecking] = useState(true)
   const [hasWechat, setHasWechat] = useState(true)
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.md
   const [role, setRole] = useState<string | null>(null)
   const [userName, setUserName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -78,7 +80,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="light">
+      <Sider
+        collapsible
+        collapsed={collapsed}
+        onCollapse={setCollapsed}
+        theme="light"
+        breakpoint="lg"
+        collapsedWidth={0}
+      >
         <div style={{ padding: collapsed ? '12px 8px' : '16px', borderBottom: '1px solid #f0f0f0' }}>
           {collapsed ? (
             <div style={{ textAlign: 'center' }}>
@@ -168,7 +177,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none' }}
           />
         )}
-        <Content style={{ margin: '24px', background: '#fff', borderRadius: 8, padding: 24, minHeight: 360 }}>
+        <Content style={{
+          margin: isMobile ? 8 : 24,
+          background: '#fff',
+          borderRadius: isMobile ? 0 : 8,
+          padding: isMobile ? 12 : 24,
+          minHeight: 360,
+        }}>
           {children}
         </Content>
       </Layout>

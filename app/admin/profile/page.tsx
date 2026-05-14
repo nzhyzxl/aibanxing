@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Form, Input, Select, Button, message, Typography, Divider, Card, Avatar, Space, Tag } from 'antd'
+import { Form, Input, Select, Button, message, Typography, Divider, Card, Avatar, Space, Tag, Grid } from 'antd'
 import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -35,6 +35,8 @@ export default function ProfilePage() {
   const [qrUrls, setQrUrls] = useState<string[]>([])
   const [coverUrls, setCoverUrls] = useState<string[]>([])
   const [user, setUser] = useState<User | null>(null)
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.sm
   const router = useRouter()
 
   useEffect(() => {
@@ -97,10 +99,16 @@ export default function ProfilePage() {
   const catLabel = user?.category ? categoryLabels[user.category] : null
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div style={{ maxWidth: isMobile ? '100%' : 640 }}>
       {/* 个人头像展示区 */}
       <Card style={{ marginBottom: 24, borderRadius: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center',
+          gap: 16,
+          textAlign: isMobile ? 'center' : 'left',
+        }}>
           <Avatar
             size={72}
             src={avatarUrls[0]}
@@ -110,7 +118,7 @@ export default function ProfilePage() {
             {!avatarUrls[0] && user?.name?.[0]}
           </Avatar>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start' }}>
               <Text strong style={{ fontSize: 18 }}>{user?.name || '-'}</Text>
               <Tag color={roleColor} style={{ margin: 0 }}>{roleLabel}</Tag>
               {catLabel && <Tag color="orange">{catLabel}</Tag>}
@@ -127,6 +135,7 @@ export default function ProfilePage() {
             onClick={handleLogout}
             loading={loggingOut}
             danger
+            block={isMobile}
           >
             退出登录
           </Button>
@@ -142,9 +151,7 @@ export default function ProfilePage() {
         <Form.Item label="头像">
           <ImageUploader
             value={avatarUrls}
-            onChange={(urls) => {
-              setAvatarUrls(urls)
-            }}
+            onChange={setAvatarUrls}
             maxCount={1}
             label="上传头像"
           />
@@ -199,7 +206,7 @@ export default function ProfilePage() {
             label="上传微信二维码"
           />
           {qrUrls[0] && (
-            <Card size="small" style={{ marginTop: 8, maxWidth: 200, textAlign: 'center' }}>
+            <Card size="small" style={{ marginTop: 8, maxWidth: isMobile ? '100%' : 200, textAlign: 'center' }}>
               <img src={qrUrls[0]} alt="微信二维码预览" style={{ width: 120, height: 120, objectFit: 'contain' }} />
               <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
                 请确认二维码清晰可识别
@@ -225,7 +232,7 @@ export default function ProfilePage() {
             label="上传主页封面图"
           />
           {coverUrls[0] && (
-            <Card size="small" style={{ marginTop: 8, maxWidth: 300 }}>
+            <Card size="small" style={{ marginTop: 8, maxWidth: isMobile ? '100%' : 300 }}>
               <img src={coverUrls[0]} alt="封面图预览"
                 style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 6 }} />
               <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>

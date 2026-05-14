@@ -1,12 +1,12 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Upload, Button, message, Image } from 'antd'
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons'
 import imageCompression from 'browser-image-compression'
 
 interface ImageUploaderProps {
   value?: string[]
-  onChange?: (urls: string[]) => void
+  onChange?: React.Dispatch<React.SetStateAction<string[]>>
   maxCount?: number
   label?: string
 }
@@ -17,24 +17,26 @@ export default function ImageUploader({
   maxCount = 6,
   label = '上传图片',
 }: ImageUploaderProps) {
-  const [uploading, setUploading] = useState(false)
+  const [uploadingCount, setUploadingCount] = useState(0)
+  const totalRef = useRef(value.length)
+
+  useEffect(() => { totalRef.current = value.length }, [value.length])
 
   const handleUpload = async (file: File) => {
-    if (value.length >= maxCount) {
+    if (totalRef.current >= maxCount) {
       message.warning(`最多上传 ${maxCount} 张图片`)
       return false
     }
 
-    setUploading(true)
+    totalRef.current += 1
+    setUploadingCount(c => c + 1)
     try {
-      // 压缩图片
       const compressed = await imageCompression(file, {
         maxSizeMB: 0.8,
         maxWidthOrHeight: 1200,
         useWebWorker: true,
       })
 
-      // 上传到 OSS
       const formData = new FormData()
       formData.append('file', compressed, file.name)
 
@@ -42,14 +44,14 @@ export default function ImageUploader({
       if (!res.ok) throw new Error('Upload failed')
 
       const { url } = await res.json()
-      onChange?.([...value, url])
-      message.success('上传成功')
+      onChange?.((prev) => [...prev, url])
     } catch (err) {
-      message.error('上传失败，请重试')
+      totalRef.current -= 1
+      message.error(`${file.name} 上传失败，请重试`)
     } finally {
-      setUploading(false)
+      setUploadingCount(c => c - 1)
     }
-    return false // 阻止 antd 自动上传
+    return false
   }
 
   const handleRemove = (url: string) => {
@@ -88,8 +90,9 @@ export default function ImageUploader({
           beforeUpload={handleUpload}
           showUploadList={false}
           accept="image/jpeg,image/png,image/webp"
+          multiple
         >
-          <Button icon={<UploadOutlined />} loading={uploading}>
+          <Button icon={<UploadOutlined />} loading={uploadingCount > 0}>
             {label}（{value.length}/{maxCount}）
           </Button>
         </Upload>

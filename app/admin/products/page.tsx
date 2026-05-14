@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import {
   Table, Button, Switch, Space, Modal, Form, Input,
-  Select, InputNumber, Tag, message, Typography, Popconfirm, Image
+  Select, InputNumber, Tag, message, Typography, Popconfirm, Image, Grid
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import ImageUploader from '@/components/admin/ImageUploader'
@@ -31,6 +31,8 @@ export default function ProductsPage() {
   const [images, setImages] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null)
+  const screens = Grid.useBreakpoint()
+  const isMobile = !screens.sm
   const [form] = Form.useForm()
 
   const fetchProducts = async () => {
@@ -169,12 +171,14 @@ export default function ProductsPage() {
     {
       title: '匠人',
       key: 'artisan',
+      responsive: ['sm' as const],
       render: (_: any, r: ProductWithArtisan) => r.artisan?.name || '-'
     },
     {
       title: '品类',
       dataIndex: 'category',
       key: 'category',
+      responsive: ['sm' as const],
       render: (v: string) => {
         const label = CATEGORY_OPTIONS.find(c => c.value === v)?.label
         return label ? <Tag color="orange">{label}</Tag> : '-'
@@ -218,7 +222,7 @@ export default function ProductsPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <Title level={4} style={{ margin: 0 }}>产品管理</Title>
         <Button type="primary" icon={<PlusOutlined />}
           style={{ background: '#F5A623', borderColor: '#F5A623' }}
@@ -233,7 +237,8 @@ export default function ProductsPage() {
         rowKey="id"
         loading={loading}
         pagination={{ pageSize: 20 }}
-        size="middle"
+        size={isMobile ? 'small' : 'middle'}
+        scroll={{ x: 700 }}
       />
 
       <Modal
@@ -241,7 +246,8 @@ export default function ProductsPage() {
         onCancel={() => setModalOpen(false)}
         title={editing ? '编辑产品' : '新增产品'}
         footer={null}
-        width={560}
+        width={isMobile ? '95%' : 560}
+        centered
       >
         <Form form={form} layout="vertical" onFinish={onSave} style={{ marginTop: 16 }}>
           <Form.Item label="所属匠人" name="artisan_id" rules={[{ required: true, message: '请选择匠人' }]}>
