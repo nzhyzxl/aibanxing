@@ -102,7 +102,7 @@ export default function ArtisanProfilePage({
   const coverImage = artisan.cover_image_url || products[0]?.images?.[0] || artisan.avatar_url
   const shareImgUrl = coverImage
     ? (coverImage.startsWith('http') ? coverImage : `${baseUrl}${coverImage}`)
-    : `${baseUrl}/og-image.jpg`
+    : "https://aibanxing.oss-cn-hangzhou.aliyuncs.com/uploads/og-image.jpg"
 
   return (
     <div className="min-h-screen bg-[#FDFAF5]">

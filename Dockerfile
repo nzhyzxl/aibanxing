@@ -3,6 +3,11 @@ FROM docker.m.daocloud.io/node:22-alpine AS builder
 
 WORKDIR /app
 
+# 安装中文字体（用于图片生成）
+RUN apk add --no-cache \
+    fontconfig \
+    font-noto-cjk
+
 # 声明构建参数（NEXT_PUBLIC_ 开头的变量需要在构建时注入）
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -25,6 +30,11 @@ RUN npm run build
 FROM docker.m.daocloud.io/node:22-alpine AS runner
 
 WORKDIR /app
+
+# 运行时也需要中文字体
+RUN apk add --no-cache \
+    fontconfig \
+    font-noto-cjk
 
 ENV NODE_ENV=production
 

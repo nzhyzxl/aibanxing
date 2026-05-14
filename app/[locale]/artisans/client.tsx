@@ -60,7 +60,7 @@ export default function ArtisansClient({
           <UnifiedShare
             title={locale === 'zh' ? '爱伴行 · 认识我们的匠人' : 'AiBanXing · Meet Our Artisans'}
             desc={locale === 'zh' ? '每位匠人都经由真实的朋友邀请与背书' : 'Every artisan is personally invited and vouched for'}
-            imgUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/og-image.jpg`}
+            imgUrl={"https://aibanxing.oss-cn-hangzhou.aliyuncs.com/uploads/og-image.jpg"}
             pageUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/${locale}/artisans`}
             locale={locale}
             variant="text"
