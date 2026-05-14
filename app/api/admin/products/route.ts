@@ -2,15 +2,23 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { getCurrentUser } from '@/lib/auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const user = await getCurrentUser(request)
     const supabaseAdmin = getSupabaseAdmin()
-    const { data } = await supabaseAdmin
+
+    let query = supabaseAdmin
       .from('products')
       .select('*, artisan:artisan_id(*)')
       .order('created_at', { ascending: false })
 
+    if (user?.role === 'artisan') {
+      query = query.eq('artisan_id', user.id)
+    }
+
+    const { data } = await query
     return NextResponse.json(data || [])
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
@@ -19,11 +27,20 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getCurrentUser(request)
+    if (!user) {
+      return NextResponse.json({ error: '未登录' }, { status: 401 })
+    }
+
     const body = await request.json()
     const supabaseAdmin = getSupabaseAdmin()
+
+    // 匠人只能给自己创建产品
+    const artisanId = user.role === 'artisan' ? user.id : body.artisan_id
+
     const { data, error } = await supabaseAdmin
       .from('products')
-      .insert({ ...body, is_published: false })
+      .insert({ ...body, artisan_id: artisanId, is_published: false })
       .select()
       .single()
 

@@ -231,15 +231,87 @@ export default function ProductsPage() {
         </Button>
       </div>
 
-      <Table
-        columns={columns}
-        dataSource={products}
-        rowKey="id"
-        loading={loading}
-        pagination={{ pageSize: 20 }}
-        size={isMobile ? 'small' : 'middle'}
-        scroll={{ x: 700 }}
-      />
+      {isMobile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {products.map((product) => (
+            <div key={product.id} style={{
+              background: '#fff',
+              borderRadius: 12,
+              border: '1px solid #F5EFE6',
+              overflow: 'hidden',
+            }}>
+              <div style={{ display: 'flex', gap: 12, padding: 12 }}>
+                {product.images?.[0] ? (
+                  <Image
+                    src={product.images[0]}
+                    alt=""
+                    width={80}
+                    height={80}
+                    style={{ objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                  />
+                ) : (
+                  <div style={{ width: 80, height: 80, background: '#F5EFE6', borderRadius: 8, flexShrink: 0 }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
+                  <Text strong style={{ fontSize: 15, color: '#2C2420' }} ellipsis>{product.name}</Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {product.category && (
+                      <Tag color="orange">{CATEGORY_OPTIONS.find(c => c.value === product.category)?.label || product.category}</Tag>
+                    )}
+                    {product.price != null ? (
+                      <span style={{ fontSize: 14, fontWeight: 600, color: '#F5A623' }}>
+                        <span style={{
+                          background: '#F5A623', color: '#fff', fontSize: 10,
+                          padding: '1px 5px', borderRadius: 4, marginRight: 4,
+                        }}>初心价</span>
+                        ¥{product.price}
+                      </span>
+                    ) : (
+                      <Text type="secondary" style={{ fontSize: 13 }}>询价</Text>
+                    )}
+                  </div>
+                  {currentUser?.role === 'admin' && (
+                    <Text type="secondary" style={{ fontSize: 12 }}>{product.artisan?.name || '-'}</Text>
+                  )}
+                </div>
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 12px', borderTop: '1px solid #F5EFE6',
+                background: '#FDFAF5',
+              }}>
+                <Switch
+                  checked={product.is_published}
+                  checkedChildren="已上架"
+                  unCheckedChildren="未上架"
+                  size="small"
+                  onChange={() => togglePublish(product.id, product.is_published)}
+                />
+                <Space size="small">
+                  <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(product)}>编辑</Button>
+                  <Popconfirm
+                    title="确认删除？"
+                    onConfirm={() => deleteProduct(product.id)}
+                    okText="删除" cancelText="取消" okButtonProps={{ danger: true }}
+                  >
+                    <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+                  </Popconfirm>
+                </Space>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={products}
+          rowKey="id"
+          loading={loading}
+          pagination={{ pageSize: 20 }}
+          size="middle"
+          scroll={{ x: 700 }}
+        />
+      )}
 
       <Modal
         open={modalOpen}
