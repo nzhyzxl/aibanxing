@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import UnifiedShare from '@/components/frontend/UnifiedShare'
 import type { User } from '@/lib/supabase'
 
 const CATEGORIES = [
@@ -54,7 +55,17 @@ export default function ArtisansClient({
             ? '每位匠人都经由真实的朋友邀请与背书'
             : 'Every artisan is personally invited and vouched for'}
         </p>
-        <div className="w-8 h-0.5 bg-[#F5A623] mx-auto mt-6" />
+        <div className="w-8 h-0.5 bg-[#F5A623] mx-auto mt-6 mb-6" />
+        <div className="flex justify-center">
+          <UnifiedShare
+            title={locale === 'zh' ? '爱伴行 · 认识我们的匠人' : 'AiBanXing · Meet Our Artisans'}
+            desc={locale === 'zh' ? '每位匠人都经由真实的朋友邀请与背书' : 'Every artisan is personally invited and vouched for'}
+            imgUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/og-image.jpg`}
+            pageUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/${locale}/artisans`}
+            locale={locale}
+            variant="text"
+          />
+        </div>
       </section>
 
       {/* 筛选栏 */}

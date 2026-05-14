@@ -400,8 +400,8 @@ export default function ProductDetailPage({
             <UnifiedShare
               title={`${name} · ${artisan.name}`}
               desc={description || (locale === 'zh' ? `${artisan.name} 在爱伴行的作品` : `${artisan.name}'s work on AiBanXing`)}
-              imgUrl={product.images?.[0] || ''}
-              pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/products/${product.id}`}
+              imgUrl={product.images?.[0] || `${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/og-image.jpg`}
+              pageUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/${locale}/products/${product.id}`}
               locale={locale}
             />
           </div>

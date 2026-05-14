@@ -98,11 +98,11 @@ export default function ArtisanProfilePage({
   const shareUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/${locale}/artisans/${artisan.id}`
     : ''
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'
   const coverImage = artisan.cover_image_url || products[0]?.images?.[0] || artisan.avatar_url
-  // 分享卡片兜底：没有任何图片时用品牌 OG 图
   const shareImgUrl = coverImage
-    ? (coverImage.startsWith('http') ? coverImage : `${typeof window !== 'undefined' ? window.location.origin : ''}${coverImage}`)
-    : `${typeof window !== 'undefined' ? window.location.origin : 'https://www.aibanxing.top'}/og-image.jpg`
+    ? (coverImage.startsWith('http') ? coverImage : `${baseUrl}${coverImage}`)
+    : `${baseUrl}/og-image.jpg`
 
   return (
     <div className="min-h-screen bg-[#FDFAF5]">
@@ -228,7 +228,7 @@ export default function ArtisanProfilePage({
             title={`${artisan.name} · ${artisan.category || '匠人'}`}
             desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
             imgUrl={shareImgUrl}
-            pageUrl={`${typeof window !== 'undefined' ? window.location.origin : ''}/${locale}/artisans/${artisan.id}`}
+            pageUrl={`${baseUrl}/${locale}/artisans/${artisan.id}`}
             locale={locale}
           />
         </div>

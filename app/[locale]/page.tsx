@@ -101,8 +101,8 @@ export default function HomePage({ params }: { params: { locale: string } }) {
             <UnifiedShare
               title={locale === 'zh' ? '爱伴行 · 遇见有温度的好物' : 'AiBanXing · Things made with love'}
               desc={locale === 'zh' ? '每一件好物，都有人为它作证' : 'Every piece, personally vouched for'}
-              imgUrl={typeof window !== 'undefined' ? `${window.location.origin}/og-image.jpg` : ''}
-              pageUrl={typeof window !== 'undefined' ? window.location.origin + '/' + locale : ''}
+              imgUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/og-image.jpg`}
+              pageUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/${locale}`}
               locale={locale}
               variant="text"
             />
