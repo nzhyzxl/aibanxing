@@ -6,6 +6,7 @@ import {
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import ImageUploader from '@/components/admin/ImageUploader'
+import { supabase } from '@/lib/supabase'
 import type { Product, User } from '@/lib/supabase'
 
 const { Title, Text } = Typography
@@ -29,6 +30,7 @@ export default function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [images, setImages] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string } | null>(null)
   const [form] = Form.useForm()
 
   const fetchProducts = async () => {
@@ -44,20 +46,43 @@ export default function ProductsPage() {
   const fetchArtisans = async () => {
     const res = await fetch('/api/admin/artisans/list')
     if (res.ok) {
-      const data = await res.json()
-      setArtisans(data as User[])
+      const data = (await res.json()) as User[]
+      if (currentUser?.role === 'artisan') {
+        setArtisans(data.filter((a) => a.id === currentUser.id))
+      } else {
+        setArtisans(data)
+      }
     }
   }
 
   useEffect(() => {
     fetchProducts()
-    fetchArtisans()
   }, [])
+
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const { data } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single()
+        setCurrentUser({ id: session.user.id, role: data?.role || 'artisan' })
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (currentUser) fetchArtisans()
+  }, [currentUser])
 
   const openCreate = () => {
     setEditing(null)
     setImages([])
     form.resetFields()
+    if (currentUser?.role === 'artisan') {
+      form.setFieldsValue({ artisan_id: currentUser.id })
+    }
     setModalOpen(true)
   }
 
@@ -223,7 +248,7 @@ export default function ProductsPage() {
             <Select
               placeholder="选择匠人"
               options={artisans.map(a => ({ value: a.id, label: a.name }))}
-              disabled={!!editing}
+              disabled={!!editing || currentUser?.role === 'artisan'}
             />
           </Form.Item>
 
