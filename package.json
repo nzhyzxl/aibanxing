@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.3.6",
+    "@next/third-parties": "^16.2.6",
     "@supabase/supabase-js": "^2.43.0",
     "ali-oss": "^6.21.0",
     "antd": "^5.17.0",
@@ -21,8 +22,8 @@
     "react": "^18",
     "react-dom": "^18",
     "react-image-crop": "^11.0.5",
-    "weixin-js-sdk": "^1.6.0",
-    "sharp": "^0.33.0"
+    "sharp": "^0.33.0",
+    "weixin-js-sdk": "^1.6.0"
   },
   "devDependencies": {
     "@types/node": "^20",

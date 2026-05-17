@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -27,6 +28,9 @@ export default function RootLayout({
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {process.env.NEXT_PUBLIC_GA_ID && (
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        )}
       </head>
       <body>{children}</body>
     </html>
