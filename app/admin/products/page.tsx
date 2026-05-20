@@ -103,10 +103,18 @@ export default function ProductsPage() {
       name: product.name,
       description: product.description,
       price: product.price,
+      price_usd: product.price_usd,
       category: product.category,
       markets: product.markets || ['cn'],
     })
     setModalOpen(true)
+  }
+
+  // 人民币价格变动时，自动推算美元建议价（汇率7，溢价1.5倍）
+  const handlePriceChange = (cnyPrice: number | null) => {
+    if (!cnyPrice) return
+    const suggested = Math.ceil((cnyPrice * 1.5) / 7)
+    form.setFieldsValue({ price_usd: suggested })
   }
 
   const onSave = async (values: any) => {
@@ -370,6 +378,25 @@ export default function ProductsPage() {
             <InputNumber
               prefix="¥" min={0} precision={2} style={{ width: '100%' }}
               placeholder="留空则显示「询价」"
+              onChange={handlePriceChange}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label={
+              <span>
+                海外定价（美元）
+                <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                  填写人民币后自动推算（汇率 7 × 1.5 倍），可手动调整
+                </Text>
+              </span>
+            }
+            name="price_usd"
+            extra="留空则海外也显示「询价」"
+          >
+            <InputNumber
+              prefix="$" min={0} precision={2} style={{ width: '100%' }}
+              placeholder="建议：人民币价格 × 1.5 ÷ 7"
             />
           </Form.Item>
 

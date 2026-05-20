@@ -32,3 +32,6 @@ CREATE POLICY "artisan_read_own_inquiries" ON inquiries
 -- 任何人都可以提交询价（匿名用户也可以）
 CREATE POLICY "anyone_can_inquire" ON inquiries
   FOR INSERT WITH CHECK (true);
+
+-- 产品国际定价（美元）
+ALTER TABLE products ADD COLUMN IF NOT EXISTS price_usd numeric;

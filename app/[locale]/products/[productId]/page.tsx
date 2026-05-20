@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import UnifiedShare from '@/components/frontend/UnifiedShare'
 import RichText from '@/components/frontend/RichText'
+import InquiryForm from '@/components/frontend/InquiryForm'
 import type { Product, User, Endorsement } from '@/lib/supabase'
 
 type EndorsementWithEndorser = Endorsement & { endorser: User }
@@ -286,10 +287,12 @@ export default function ProductDetailPage({
               </h1>
               <div className="flex items-center gap-2">
                 <span className="bg-[#F5A623] text-white text-sm px-3 py-1 rounded-full font-medium">
-                  初心价
+                  {locale === 'zh' ? '初心价' : 'Origin Price'}
                 </span>
                 <span className="text-2xl font-bold text-[#2C2420]">
-                  {product.price ? `¥${product.price}` : (locale === 'zh' ? '询价' : 'Inquire')}
+                  {locale === 'en'
+                    ? (product.price_usd ? `$${product.price_usd}` : 'Inquire')
+                    : (product.price ? `¥${product.price}` : '询价')}
                 </span>
               </div>
             </div>
@@ -365,37 +368,33 @@ export default function ProductDetailPage({
               </div>
             )}
 
-            {/* 微信联系 */}
-            <div className="bg-[#FEF6E9] rounded-2xl p-5 text-center">
-              <p className="font-serif text-base text-[#2C2420] mb-1">
-                {locale === 'zh' ? '想购买这件作品？' : 'Interested in this piece?'}
-              </p>
-              <p className="text-xs text-[#9E9189] mb-4">
-                {locale === 'zh' ? '扫码添加匠人微信，直接洽谈' : 'Add the artisan on WeChat to discuss'}
-              </p>
-              {artisan.wechat_qr_url ? (
-                <div className="flex flex-col items-center gap-2">
-                  <div className="bg-white rounded-xl p-3 shadow-sm inline-block">
-                    <Image
-                      src={artisan.wechat_qr_url}
-                      alt="WeChat QR"
-                      width={140}
-                      height={140}
-                      className="rounded-lg"
-                    />
+            {/* 联系匠人 */}
+            {locale === 'en' ? (
+              <InquiryForm artisanId={artisan.id} artisanName={artisan.name_en || artisan.name} productId={product.id} />
+            ) : (
+              <div className="bg-[#FEF6E9] rounded-2xl p-5 text-center">
+                <p className="font-serif text-base text-[#2C2420] mb-1">想购买这件作品？</p>
+                <p className="text-xs text-[#9E9189] mb-4">扫码添加匠人微信，直接洽谈</p>
+                {artisan.wechat_qr_url ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="bg-white rounded-xl p-3 shadow-sm inline-block">
+                      <Image
+                        src={artisan.wechat_qr_url}
+                        alt="WeChat QR"
+                        width={140}
+                        height={140}
+                        className="rounded-lg"
+                      />
+                    </div>
+                    <p className="text-sm text-[#6B4C35] font-medium">长按扫码添加微信</p>
                   </div>
-                  <p className="text-sm text-[#6B4C35] font-medium">
-                    {locale === 'zh' ? '长按扫码添加微信' : 'Long press to add on WeChat'}
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-white rounded-xl p-6 border-2 border-dashed border-[#E8DDD4] inline-flex">
-                  <p className="text-xs text-[#9E9189]">
-                    {locale === 'zh' ? '微信二维码即将上线' : 'WeChat QR coming soon'}
-                  </p>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="bg-white rounded-xl p-6 border-2 border-dashed border-[#E8DDD4] inline-flex">
+                    <p className="text-xs text-[#9E9189]">微信二维码即将上线</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 分享 */}
             <UnifiedShare
@@ -427,15 +426,17 @@ function MoreProducts({
   const [more, setMore] = useState<Product[]>([])
 
   useEffect(() => {
+    const marketFilter = locale === 'en' ? ['intl'] : ['cn']
     supabase
       .from('products')
       .select('*')
       .eq('artisan_id', artisanId)
       .eq('is_published', true)
       .neq('id', currentProductId)
+      .contains('markets', marketFilter)
       .limit(4)
       .then(({ data }) => setMore((data || []) as Product[]))
-  }, [artisanId, currentProductId])
+  }, [artisanId, currentProductId, locale])
 
   if (more.length === 0) return null
 
@@ -473,9 +474,13 @@ function MoreProducts({
               <div className="p-2.5">
                 <p className="text-xs font-medium text-[#2C2420] line-clamp-1">{pName}</p>
                 <div className="flex items-center gap-1 mt-1">
-                  <span className="text-xs bg-[#F5A623] text-white px-1.5 py-0.5 rounded-full">初心价</span>
+                  <span className="text-xs bg-[#F5A623] text-white px-1.5 py-0.5 rounded-full">
+                    {locale === 'zh' ? '初心价' : 'Origin Price'}
+                  </span>
                   <span className="text-xs font-semibold text-[#2C2420]">
-                    {p.price ? `¥${p.price}` : (locale === 'zh' ? '询价' : 'Inquire')}
+                    {locale === 'en'
+                      ? (p.price_usd ? `$${p.price_usd}` : 'Inquire')
+                      : (p.price ? `¥${p.price}` : '询价')}
                   </span>
                 </div>
               </div>

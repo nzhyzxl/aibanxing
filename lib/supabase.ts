@@ -73,6 +73,7 @@ export interface Product {
   description?: string
   description_en?: string
   price?: number
+  price_usd?: number
   images: string[]
   category?: string
   is_published: boolean

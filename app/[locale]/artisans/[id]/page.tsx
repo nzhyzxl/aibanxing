@@ -277,7 +277,9 @@ function ProductItem({ product, locale }: { product: Product; locale: string }) 
               {locale === 'zh' ? '初心价' : 'Origin Price'}
             </span>
           <span className="text-sm font-semibold text-[#2C2420]">
-            {product.price ? `¥${product.price}` : (locale === 'zh' ? '询价' : 'Inquire')}
+            {locale === 'en'
+              ? (product.price_usd ? `$${product.price_usd}` : 'Inquire')
+              : (product.price ? `¥${product.price}` : '询价')}
           </span>
         </div>
       </div>
