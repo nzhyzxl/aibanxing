@@ -160,21 +160,20 @@ export default function ProductDetailPage({
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
             >
-              {/* 图片轨道：所有图片横向排列 */}
-              <div
-                className="flex h-full"
-                style={{
-                  width: `${imageCount * 100}%`,
-                  transform: `translateX(calc(${-(activeImage * 100)}% / ${imageCount} + ${dragOffset}px / ${imageCount}))`,
-                  transition: dragging ? 'none' : 'transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-                  willChange: 'transform',
-                }}
-              >
-                {(product.images || []).map((img, i) => (
+              {/* 每张图片独立绝对定位，避免 flex 轨道在移动端高度计算问题 */}
+              {imageCount === 0 ? (
+                <div className="absolute inset-0 flex items-center justify-center text-[#C8A882] text-5xl">
+                  🌿
+                </div>
+              ) : (
+                (product.images || []).map((img, i) => (
                   <div
                     key={i}
-                    className="relative flex-shrink-0"
-                    style={{ width: `${100 / imageCount}%` }}
+                    className="absolute inset-0"
+                    style={{
+                      transform: `translateX(calc(${(i - activeImage) * 100}% + ${dragOffset}px))`,
+                      transition: dragging ? 'none' : 'transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+                    }}
                   >
                     <Image
                       src={img}
@@ -183,17 +182,11 @@ export default function ProductDetailPage({
                       className="object-cover"
                       sizes="(max-width: 768px) 100vw, 50vw"
                       priority={i === 0}
+                      loading="eager"
                       draggable={false}
                     />
                   </div>
-                ))}
-              </div>
-
-              {/* 空状态 */}
-              {imageCount === 0 && (
-                <div className="w-full h-full flex items-center justify-center text-[#C8A882] text-5xl">
-                  🌿
-                </div>
+                ))
               )}
 
               {/* 左右箭头（桌面端，多图时显示） */}
