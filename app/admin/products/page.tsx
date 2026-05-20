@@ -36,9 +36,12 @@ export default function ProductsPage() {
   const isMobile = !screens.sm
   const [form] = Form.useForm()
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (artisanId?: string) => {
     setLoading(true)
-    const res = await fetch('/api/admin/products')
+    const url = artisanId
+      ? `/api/admin/products?artisan_id=${artisanId}`
+      : '/api/admin/products'
+    const res = await fetch(url)
     if (res.ok) {
       const data = await res.json()
       setProducts(data as ProductWithArtisan[])
@@ -59,8 +62,10 @@ export default function ProductsPage() {
   }
 
   useEffect(() => {
-    fetchProducts()
-  }, [])
+    if (currentUser) {
+      fetchProducts(currentUser.role === 'artisan' ? currentUser.id : undefined)
+    }
+  }, [currentUser])
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
