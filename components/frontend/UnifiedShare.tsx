@@ -11,6 +11,40 @@ interface UnifiedShareProps {
   variant?: 'button' | 'text'
 }
 
+// ── 海外版分享：Web Share API 或复制链接，无需微信 ──
+function IntlShare({ title, desc, pageUrl, variant = 'button' }: Omit<UnifiedShareProps, 'locale'>) {
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({ title, text: desc, url: pageUrl }).catch(() => {})
+      return
+    }
+    navigator.clipboard?.writeText(pageUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    }).catch(() => {})
+  }
+
+  return variant === 'button' ? (
+    <button
+      onClick={handleShare}
+      className="w-full flex items-center justify-center gap-2 bg-[#F5A623] text-white py-3.5 rounded-2xl font-medium text-base hover:bg-[#E09510] transition-colors"
+    >
+      <ShareIcon />
+      {copied ? 'Link copied!' : 'Share with friends'}
+    </button>
+  ) : (
+    <button
+      onClick={handleShare}
+      className="text-sm text-[#F5A623] font-medium flex items-center gap-1 hover:underline"
+    >
+      <ShareIcon size={14} />
+      {copied ? 'Link copied! →' : 'Share with a friend →'}
+    </button>
+  )
+}
+
 function toAbsoluteUrl(url: string): string {
   if (!url) return ''
   if (url.startsWith('http://') || url.startsWith('https://')) return url
@@ -78,6 +112,10 @@ function applyWxShare(title: string, desc: string, imgUrl: string, link: string)
 export default function UnifiedShare({
   title, desc, imgUrl, pageUrl, locale, variant = 'button'
 }: UnifiedShareProps) {
+  if (locale === 'en') {
+    return <IntlShare title={title} desc={desc} imgUrl={imgUrl} pageUrl={pageUrl} variant={variant} />
+  }
+
   const { user, loading } = useWxAuth()
   const [showGuide, setShowGuide] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
