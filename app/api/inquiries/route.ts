@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       const resend = new Resend(process.env.RESEND_API_KEY)
       const artisanName = artisan.name_en || artisan.name
       await resend.emails.send({
-        from: process.env.RESEND_FROM_EMAIL || 'AiBanXing <noreply@aibanxing.top>',
+        from: process.env.RESEND_FROM_EMAIL || 'AiBanXing <noreply@aibanxing.asia>',
         to: notifyEmail,
         subject: `New inquiry from ${visitor_name} — AiBanXing`,
         html: `
