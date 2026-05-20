@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { supabase } from '@/lib/supabase'
 import TrustChain from '@/components/frontend/TrustChain'
 import UnifiedShare from '@/components/frontend/UnifiedShare'
@@ -18,6 +19,7 @@ export default function ArtisanProfilePage({
   params: { locale: string; id: string }
 }) {
   const { locale, id } = params
+  const t = useTranslations()
   const searchParams = useSearchParams()
   const ref = searchParams.get('ref')
 
@@ -28,13 +30,11 @@ export default function ArtisanProfilePage({
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 保存 ref 来源到 sessionStorage
     if (ref) sessionStorage.setItem('ref', ref)
   }, [ref])
 
   useEffect(() => {
     const fetchAll = async () => {
-      // 匠人信息
       const { data: artisanData } = await supabase
         .from('users')
         .select('*')
@@ -45,7 +45,6 @@ export default function ArtisanProfilePage({
       if (!artisanData) { setLoading(false); return }
       setArtisan(artisanData as User)
 
-      // 并行获取：产品、背书、邀请人
       const marketFilter = locale === 'en' ? ['intl'] : ['cn']
       const [productsRes, endorsementsRes] = await Promise.all([
         supabase.from('products').select('*')
@@ -59,7 +58,6 @@ export default function ArtisanProfilePage({
       setProducts((productsRes.data || []) as Product[])
       setEndorsements((endorsementsRes.data || []) as EndorsementWithEndorser[])
 
-      // 邀请人
       if (artisanData.invited_by) {
         const { data: inviterData } = await supabase
           .from('users').select('*').eq('id', artisanData.invited_by).single()
@@ -75,7 +73,7 @@ export default function ArtisanProfilePage({
     return (
       <div className="min-h-screen bg-[#FDFAF5] flex items-center justify-center">
         <div className="text-[#9E9189] text-sm animate-pulse">
-          {locale === 'zh' ? '加载中...' : 'Loading...'}
+          {t('common.loading')}
         </div>
       </div>
     )
@@ -86,11 +84,9 @@ export default function ArtisanProfilePage({
       <div className="min-h-screen bg-[#FDFAF5] flex items-center justify-center text-center px-4">
         <div>
           <p className="text-4xl mb-4">🌿</p>
-          <p className="text-[#9E9189]">
-            {locale === 'zh' ? '找不到这位匠人' : 'Artisan not found'}
-          </p>
+          <p className="text-[#9E9189]">{t('artisans.not_found')}</p>
           <Link href={`/${locale}/artisans`} className="text-[#F5A623] text-sm mt-4 inline-block">
-            {locale === 'zh' ? '← 返回匠人列表' : '← Back to artisans'}
+            {t('artisans.back')}
           </Link>
         </div>
       </div>
@@ -99,9 +95,7 @@ export default function ArtisanProfilePage({
 
   const bio = locale === 'en' && artisan.bio_en ? artisan.bio_en : artisan.bio
   const city = locale === 'en' && artisan.city_en ? artisan.city_en : artisan.city
-  const shareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/${locale}/artisans/${artisan.id}`
-    : ''
+  const catLabel = artisan.category ? t(`category.${artisan.category}`) : null
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'
   const coverImage = artisan.cover_image_url || products[0]?.images?.[0] || artisan.avatar_url
   const shareImgUrl = coverImage
@@ -110,20 +104,17 @@ export default function ArtisanProfilePage({
 
   return (
     <div className="min-h-screen bg-[#FDFAF5]">
-      {/* Hero：背景图 + 匠人信息叠在图内底部 */}
+      {/* Hero */}
       <div className="relative w-full overflow-hidden"
         style={{ background: 'linear-gradient(135deg, #C4956A 0%, #E8C99A 60%, #F5EFE6 100%)', minHeight: 280 }}>
         {coverImage && (
           <Image src={coverImage} alt={artisan.name} fill
             className="object-cover opacity-70" sizes="100vw" priority />
         )}
-        {/* 渐变遮罩：顶部透明，底部深色，让文字清晰可读 */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-        {/* 匠人信息：沉在背景图内底部 */}
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-5 max-w-2xl mx-auto">
           <div className="flex items-end gap-4">
-            {/* 头像 */}
             <div className="w-20 h-20 rounded-full border-3 border-white/80 shadow-lg overflow-hidden bg-[#E8C99A] flex items-center justify-center flex-shrink-0">
               {artisan.avatar_url ? (
                 <Image src={artisan.avatar_url} alt={artisan.name} width={80} height={80}
@@ -132,13 +123,12 @@ export default function ArtisanProfilePage({
                 <span className="text-[#854F0B] text-2xl font-serif font-bold">{artisan.name[0]}</span>
               )}
             </div>
-            {/* 名字和标签 */}
             <div className="pb-1">
               <h1 className="font-serif text-2xl font-bold text-white drop-shadow-md">{artisan.name}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                {artisan.category && (
+                {catLabel && (
                   <span className="text-xs bg-[#F5A623] text-white px-2.5 py-0.5 rounded-full">
-                    {artisan.category}
+                    {catLabel}
                   </span>
                 )}
                 {city && (
@@ -159,7 +149,7 @@ export default function ArtisanProfilePage({
           </p>
         )}
 
-        {/* 分享入口（靠近顶部，点击滚动到底部分享按钮） */}
+        {/* 分享入口 */}
         <div className="mb-6">
           <a
             href="#share-section"
@@ -172,7 +162,7 @@ export default function ArtisanProfilePage({
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13" />
             </svg>
-            {locale === 'zh' ? '分享给朋友的朋友 →' : 'Share with a friend →'}
+            {t('profile.share_text')}
           </a>
         </div>
 
@@ -183,7 +173,7 @@ export default function ArtisanProfilePage({
         {products.length > 0 && (
           <section className="py-6 border-t border-[#E8DDD4]">
             <h2 className="font-serif text-xl text-[#2C2420] mb-4">
-              {locale === 'zh' ? '作品与服务' : 'Works & Services'}
+              {t('profile.works_title')}
             </h2>
             <div className="grid grid-cols-2 gap-3">
               {products.map(product => (
@@ -197,11 +187,10 @@ export default function ArtisanProfilePage({
         <section className="py-8 border-t border-[#E8DDD4]">
           <div className="bg-[#FEF6E9] rounded-2xl p-6 text-center">
             {locale === 'en' ? (
-              /* 海外：询价表单 */
               <>
-                <h2 className="font-serif text-xl text-[#2C2420] mb-1">Interested?</h2>
+                <h2 className="font-serif text-xl text-[#2C2420] mb-1">{t('profile.contact_title')}</h2>
                 <p className="text-sm text-[#9E9189] mb-6">
-                  Send {artisan.name_en || artisan.name} a message — they&apos;ll reply to your email.
+                  {t('profile.contact_desc', { name: artisan.name_en || artisan.name })}
                 </p>
                 <InquiryForm
                   artisanId={artisan.id}
@@ -209,22 +198,21 @@ export default function ArtisanProfilePage({
                 />
               </>
             ) : (
-              /* 国内：微信二维码 */
               <>
-                <h2 className="font-serif text-xl text-[#2C2420] mb-1">想了解更多？</h2>
-                <p className="text-sm text-[#9E9189] mb-6">成交发生在私信</p>
+                <h2 className="font-serif text-xl text-[#2C2420] mb-1">{t('profile.contact_title')}</h2>
+                <p className="text-sm text-[#9E9189] mb-6">{t('profile.private_note')}</p>
                 {artisan.wechat_qr_url ? (
                   <div className="flex flex-col items-center gap-3">
                     <div className="bg-white rounded-2xl p-4 shadow-sm inline-block">
                       <Image src={artisan.wechat_qr_url} alt="WeChat QR"
                         width={160} height={160} className="rounded-lg" />
                     </div>
-                    <p className="text-sm text-[#6B4C35] font-medium">长按扫码添加微信</p>
-                    <p className="text-xs text-[#9E9189]">告诉他/她你是从爱伴行看到的</p>
+                    <p className="text-sm text-[#6B4C35] font-medium">{t('profile.wechat_hint')}</p>
+                    <p className="text-xs text-[#9E9189]">{t('profile.wechat_note')}</p>
                   </div>
                 ) : (
                   <div className="bg-white rounded-2xl p-8 inline-flex items-center justify-center border-2 border-dashed border-[#E8DDD4]">
-                    <p className="text-[#9E9189] text-sm">微信二维码即将上线</p>
+                    <p className="text-[#9E9189] text-sm">{t('profile.wechat_qr_coming')}</p>
                   </div>
                 )}
               </>
@@ -235,8 +223,8 @@ export default function ArtisanProfilePage({
         {/* 底部分享 */}
         <div className="pb-8" id="share-section">
           <UnifiedShare
-            title={`${artisan.name} · ${artisan.category || '匠人'}`}
-            desc={bio || (locale === 'zh' ? '在爱伴行发现了一位好匠人' : 'Found a great artisan on AiBanXing')}
+            title={`${artisan.name} · ${catLabel || t('common.artisan_label')}`}
+            desc={bio || t('profile.found_artisan')}
             imgUrl={shareImgUrl}
             pageUrl={`${baseUrl}/${locale}/artisans/${artisan.id}`}
             locale={locale}
@@ -248,6 +236,7 @@ export default function ArtisanProfilePage({
 }
 
 function ProductItem({ product, locale }: { product: Product; locale: string }) {
+  const t = useTranslations()
   const name = locale === 'en' && product.name_en ? product.name_en : product.name
   const cover = product.images?.[0]
 
@@ -266,7 +255,7 @@ function ProductItem({ product, locale }: { product: Product; locale: string }) 
         )}
         {product.category === 'service' && (
           <span className="absolute top-2 left-2 bg-[#4A90C4] text-white text-xs px-2 py-0.5 rounded-full">
-            {locale === 'zh' ? '工作坊' : 'Workshop'}
+            {t('profile.workshop')}
           </span>
         )}
       </div>
@@ -274,12 +263,12 @@ function ProductItem({ product, locale }: { product: Product; locale: string }) 
         <p className="text-sm font-medium text-[#2C2420] line-clamp-1 mb-1">{name}</p>
         <div className="flex items-center gap-1">
           <span className="text-xs bg-[#F5A623] text-white px-1.5 py-0.5 rounded-full">
-              {locale === 'zh' ? '初心价' : 'Origin Price'}
-            </span>
+            {t('profile.xinxin_price')}
+          </span>
           <span className="text-sm font-semibold text-[#2C2420]">
             {locale === 'en'
-              ? (product.price_usd ? `$${product.price_usd}` : 'Inquire')
-              : (product.price ? `¥${product.price}` : '询价')}
+              ? (product.price_usd ? `$${product.price_usd}` : t('profile.inquire'))
+              : (product.price ? `¥${product.price}` : t('profile.inquire'))}
           </span>
         </div>
       </div>

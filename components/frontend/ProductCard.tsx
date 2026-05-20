@@ -1,5 +1,7 @@
+'use client'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import type { Product, User } from '@/lib/supabase'
 
 interface ProductCardProps {
@@ -8,6 +10,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, locale }: ProductCardProps) {
+  const t = useTranslations('common')
   const name = locale === 'en' && product.name_en ? product.name_en : product.name
   const coverImage = product.images[0]
 
@@ -28,7 +31,7 @@ export default function ProductCard({ product, locale }: ProductCardProps) {
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-warm-gray/40 text-sm">
-            暂无图片
+            {t('no_image')}
           </div>
         )}
       </div>
@@ -50,17 +53,17 @@ export default function ProductCard({ product, locale }: ProductCardProps) {
         {/* 初心价行 */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs bg-amber-brand text-white px-2 py-0.5 rounded-pill font-medium">
-            初心价
+            {t('origin_price')}
           </span>
           <span className="text-sm font-semibold text-warm-charcoal">
-            {product.price ? `¥${product.price}` : (locale === 'zh' ? '询价' : 'Inquire')}
+            {product.price ? `¥${product.price}` : t('inquire')}
           </span>
         </div>
 
         {/* 信任归属 */}
         {product.artisan.invited_by && (
           <p className="text-xs text-warm-gray/60 mt-2 truncate">
-            {locale === 'zh' ? `由 ${product.artisan.name} 推荐` : `Via ${product.artisan.name}`}
+            Via {product.artisan.name}
           </p>
         )}
       </div>

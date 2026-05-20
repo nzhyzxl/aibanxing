@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { supabase } from '@/lib/supabase'
 import UnifiedShare from '@/components/frontend/UnifiedShare'
 import RichText from '@/components/frontend/RichText'
@@ -10,28 +11,19 @@ import type { Product, User, Endorsement } from '@/lib/supabase'
 
 type EndorsementWithEndorser = Endorsement & { endorser: User }
 
-const CATEGORY_LABELS: Record<string, { zh: string; en: string }> = {
-  ceramics: { zh: '陶瓷', en: 'Ceramics' },
-  leather: { zh: '皮具', en: 'Leather' },
-  textile: { zh: '织物', en: 'Textiles' },
-  food: { zh: '食品', en: 'Food' },
-  handcraft: { zh: '手作', en: 'Handcraft' },
-  service: { zh: '服务', en: 'Services' },
-}
-
 export default function ProductDetailPage({
   params,
 }: {
   params: { locale: string; productId: string }
 }) {
   const { locale, productId } = params
+  const t = useTranslations()
   const [product, setProduct] = useState<Product | null>(null)
   const [artisan, setArtisan] = useState<User | null>(null)
   const [endorsements, setEndorsements] = useState<EndorsementWithEndorser[]>([])
   const [activeImage, setActiveImage] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  // ── 图片轮播逻辑 ──
   const trackRef = useRef<HTMLDivElement>(null)
   const [dragging, setDragging] = useState(false)
   const [dragStartX, setDragStartX] = useState(0)
@@ -58,7 +50,6 @@ export default function ProductDetailPage({
   const onTouchEnd = () => {
     setDragging(false)
     const width = trackRef.current?.offsetWidth || 300
-    // 超过宽度25%才切换，减少误触
     if (dragOffset < -width * 0.25) {
       goToImage(activeImage + 1)
     } else if (dragOffset > width * 0.25) {
@@ -70,7 +61,6 @@ export default function ProductDetailPage({
 
   useEffect(() => {
     const fetchAll = async () => {
-      // 产品信息
       const { data: productData } = await supabase
         .from('products')
         .select('*')
@@ -81,7 +71,6 @@ export default function ProductDetailPage({
       if (!productData) { setLoading(false); return }
       setProduct(productData as Product)
 
-      // 匠人信息 + 背书
       const [artisanRes, endorsementsRes] = await Promise.all([
         supabase.from('users').select('*').eq('id', productData.artisan_id).single(),
         supabase.from('endorsements')
@@ -100,9 +89,7 @@ export default function ProductDetailPage({
   if (loading) {
     return (
       <div className="min-h-screen bg-[#FDFAF5] flex items-center justify-center">
-        <p className="text-[#9E9189] text-sm animate-pulse">
-          {locale === 'zh' ? '加载中...' : 'Loading...'}
-        </p>
+        <p className="text-[#9E9189] text-sm animate-pulse">{t('common.loading')}</p>
       </div>
     )
   }
@@ -112,11 +99,9 @@ export default function ProductDetailPage({
       <div className="min-h-screen bg-[#FDFAF5] flex items-center justify-center text-center px-4">
         <div>
           <p className="text-4xl mb-4">🌿</p>
-          <p className="text-[#9E9189]">
-            {locale === 'zh' ? '找不到这个产品' : 'Product not found'}
-          </p>
+          <p className="text-[#9E9189]">{t('product.not_found')}</p>
           <Link href={`/${locale}`} className="text-[#F5A623] text-sm mt-4 inline-block">
-            {locale === 'zh' ? '← 回到首页' : '← Back to home'}
+            {t('product.back_home')}
           </Link>
         </div>
       </div>
@@ -126,8 +111,7 @@ export default function ProductDetailPage({
   const name = locale === 'en' && product.name_en ? product.name_en : product.name
   const description = locale === 'en' && product.description_en ? product.description_en : product.description
   const artisanBio = locale === 'en' && artisan.bio_en ? artisan.bio_en : artisan.bio
-  const catLabel = product.category ? CATEGORY_LABELS[product.category] : null
-  const shareUrl = typeof window !== 'undefined' ? window.location.href : ''
+  const catLabel = product.category ? t(`category.${product.category}`) : null
 
   return (
     <div className="min-h-screen bg-[#FDFAF5]">
@@ -136,7 +120,7 @@ export default function ProductDetailPage({
       <div className="max-w-4xl mx-auto px-4 pt-4 pb-2">
         <div className="flex items-center gap-2 text-xs text-[#9E9189]">
           <Link href={`/${locale}`} className="hover:text-[#F5A623] transition-colors">
-            {locale === 'zh' ? '首页' : 'Home'}
+            {t('product.breadcrumb_home')}
           </Link>
           <span>/</span>
           <Link href={`/${locale}/artisans/${artisan.id}`} className="hover:text-[#F5A623] transition-colors">
@@ -152,7 +136,6 @@ export default function ProductDetailPage({
 
           {/* 左侧：图片区 */}
           <div>
-            {/* 主图轮播 */}
             <div
               ref={trackRef}
               className="relative aspect-square bg-[#F5EFE6] rounded-2xl overflow-hidden mb-3 select-none touch-pan-y"
@@ -160,7 +143,6 @@ export default function ProductDetailPage({
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
             >
-              {/* 每张图片独立绝对定位，避免 flex 轨道在移动端高度计算问题 */}
               {imageCount === 0 ? (
                 <div className="absolute inset-0 flex items-center justify-center text-[#C8A882] text-5xl">
                   🌿
@@ -189,7 +171,6 @@ export default function ProductDetailPage({
                 ))
               )}
 
-              {/* 左右箭头（桌面端，多图时显示） */}
               {imageCount > 1 && (
                 <>
                   <button
@@ -209,14 +190,12 @@ export default function ProductDetailPage({
                 </>
               )}
 
-              {/* 品类标签 */}
               {catLabel && (
                 <span className="absolute top-3 left-3 bg-white/90 text-[#6B4C35] text-xs px-2.5 py-1 rounded-full font-medium pointer-events-none">
-                  {locale === 'zh' ? catLabel.zh : catLabel.en}
+                  {catLabel}
                 </span>
               )}
 
-              {/* 图片计数（右上角，多图时显示） */}
               {imageCount > 1 && (
                 <span className="absolute top-3 right-3 bg-black/30 text-white text-xs px-2 py-0.5 rounded-full pointer-events-none">
                   {activeImage + 1} / {imageCount}
@@ -224,7 +203,6 @@ export default function ProductDetailPage({
               )}
             </div>
 
-            {/* 指示器圆点 */}
             {imageCount > 1 && (
               <div className="flex items-center justify-center gap-1.5 mb-3">
                 {(product.images || []).map((_, i) => (
@@ -243,7 +221,6 @@ export default function ProductDetailPage({
               </div>
             )}
 
-            {/* 缩略图列表 */}
             {imageCount > 1 && (
               <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                 {(product.images || []).map((img, i) => (
@@ -280,12 +257,12 @@ export default function ProductDetailPage({
               </h1>
               <div className="flex items-center gap-2">
                 <span className="bg-[#F5A623] text-white text-sm px-3 py-1 rounded-full font-medium">
-                  {locale === 'zh' ? '初心价' : 'Origin Price'}
+                  {t('product.origin_price')}
                 </span>
                 <span className="text-2xl font-bold text-[#2C2420]">
                   {locale === 'en'
-                    ? (product.price_usd ? `$${product.price_usd}` : 'Inquire')
-                    : (product.price ? `¥${product.price}` : '询价')}
+                    ? (product.price_usd ? `$${product.price_usd}` : t('product.inquire'))
+                    : (product.price ? `¥${product.price}` : t('product.inquire'))}
                 </span>
               </div>
             </div>
@@ -294,7 +271,7 @@ export default function ProductDetailPage({
             {description && (
               <div className="bg-white rounded-2xl border border-[#E8DDD4] p-4">
                 <p className="text-xs text-[#9E9189] mb-2 font-medium uppercase tracking-wider">
-                  {locale === 'zh' ? '产品介绍' : 'About this piece'}
+                  {t('product.about_piece')}
                 </p>
                 <RichText content={description} className="text-sm text-[#2C2420] leading-relaxed" />
               </div>
@@ -320,7 +297,7 @@ export default function ProductDetailPage({
                 )}
               </div>
               <span className="text-xs text-[#F5A623] group-hover:translate-x-0.5 transition-transform">
-                {locale === 'zh' ? '查看主页 →' : 'View profile →'}
+                {t('product.view_profile')}
               </span>
             </Link>
 
@@ -328,7 +305,7 @@ export default function ProductDetailPage({
             {endorsements.length > 0 && (
               <div className="bg-white rounded-2xl border border-[#E8DDD4] p-4">
                 <p className="text-xs text-[#9E9189] mb-3 font-medium uppercase tracking-wider">
-                  {locale === 'zh' ? '朋友的信任' : 'Vouched by friends'}
+                  {t('profile.vouched_label')}
                 </p>
                 <div className="border-l-2 border-[#F5A623] pl-3">
                   <div className="flex items-center gap-2 mb-1">
@@ -353,9 +330,7 @@ export default function ProductDetailPage({
                     href={`/${locale}/artisans/${artisan.id}`}
                     className="text-xs text-[#F5A623] mt-3 inline-block hover:underline"
                   >
-                    {locale === 'zh'
-                      ? `查看全部 ${endorsements.length} 条背书 →`
-                      : `View all ${endorsements.length} endorsements →`}
+                    {t('profile.view_endorsements', { count: endorsements.length })}
                   </Link>
                 )}
               </div>
@@ -366,8 +341,8 @@ export default function ProductDetailPage({
               <InquiryForm artisanId={artisan.id} artisanName={artisan.name_en || artisan.name} productId={product.id} />
             ) : (
               <div className="bg-[#FEF6E9] rounded-2xl p-5 text-center">
-                <p className="font-serif text-base text-[#2C2420] mb-1">想购买这件作品？</p>
-                <p className="text-xs text-[#9E9189] mb-4">扫码添加匠人微信，直接洽谈</p>
+                <p className="font-serif text-base text-[#2C2420] mb-1">{t('product.buy_title')}</p>
+                <p className="text-xs text-[#9E9189] mb-4">{t('product.buy_subtitle')}</p>
                 {artisan.wechat_qr_url ? (
                   <div className="flex flex-col items-center gap-2">
                     <div className="bg-white rounded-xl p-3 shadow-sm inline-block">
@@ -379,11 +354,11 @@ export default function ProductDetailPage({
                         className="rounded-lg"
                       />
                     </div>
-                    <p className="text-sm text-[#6B4C35] font-medium">长按扫码添加微信</p>
+                    <p className="text-sm text-[#6B4C35] font-medium">{t('product.wechat_hint')}</p>
                   </div>
                 ) : (
                   <div className="bg-white rounded-xl p-6 border-2 border-dashed border-[#E8DDD4] inline-flex">
-                    <p className="text-xs text-[#9E9189]">微信二维码即将上线</p>
+                    <p className="text-xs text-[#9E9189]">{t('product.wechat_qr_coming')}</p>
                   </div>
                 )}
               </div>
@@ -392,7 +367,7 @@ export default function ProductDetailPage({
             {/* 分享 */}
             <UnifiedShare
               title={`${name} · ${artisan.name}`}
-              desc={description || (locale === 'zh' ? `${artisan.name} 在爱伴行的作品` : `${artisan.name}'s work on AiBanXing`)}
+              desc={description || t('product.artisan_work', { name: artisan.name })}
               imgUrl={product.images?.[0] || "https://aibanxing.oss-cn-hangzhou.aliyuncs.com/uploads/og-image.jpg"}
               pageUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/${locale}/products/${product.id}`}
               locale={locale}
@@ -407,7 +382,6 @@ export default function ProductDetailPage({
   )
 }
 
-// 同一匠人的其他产品
 function MoreProducts({
   artisanId, currentProductId, locale, artisanName
 }: {
@@ -416,6 +390,7 @@ function MoreProducts({
   locale: string
   artisanName: string
 }) {
+  const t = useTranslations()
   const [more, setMore] = useState<Product[]>([])
 
   useEffect(() => {
@@ -437,13 +412,13 @@ function MoreProducts({
     <div className="mt-12 pt-8 border-t border-[#E8DDD4]">
       <div className="flex items-center justify-between mb-5">
         <h2 className="font-serif text-lg font-semibold text-[#2C2420]">
-          {locale === 'zh' ? `${artisanName} 的其他作品` : `More from ${artisanName}`}
+          {t('product.more_from', { name: artisanName })}
         </h2>
         <Link
           href={`/${locale}/artisans/${artisanId}`}
           className="text-sm text-[#F5A623] hover:underline"
         >
-          {locale === 'zh' ? '查看主页 →' : 'View profile →'}
+          {t('product.view_profile')}
         </Link>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -468,12 +443,12 @@ function MoreProducts({
                 <p className="text-xs font-medium text-[#2C2420] line-clamp-1">{pName}</p>
                 <div className="flex items-center gap-1 mt-1">
                   <span className="text-xs bg-[#F5A623] text-white px-1.5 py-0.5 rounded-full">
-                    {locale === 'zh' ? '初心价' : 'Origin Price'}
+                    {t('product.origin_price')}
                   </span>
                   <span className="text-xs font-semibold text-[#2C2420]">
                     {locale === 'en'
-                      ? (p.price_usd ? `$${p.price_usd}` : 'Inquire')
-                      : (p.price ? `¥${p.price}` : '询价')}
+                      ? (p.price_usd ? `$${p.price_usd}` : t('product.inquire'))
+                      : (p.price ? `¥${p.price}` : t('product.inquire'))}
                   </span>
                 </div>
               </div>

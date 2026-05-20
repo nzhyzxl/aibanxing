@@ -2,20 +2,13 @@
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import { supabase } from '@/lib/supabase'
 import UnifiedShare from '@/components/frontend/UnifiedShare'
 import RichText from '@/components/frontend/RichText'
 import type { Product, User } from '@/lib/supabase'
 
-const CATEGORIES = [
-  { value: 'all', zh: '全部', en: 'All' },
-  { value: 'ceramics', zh: '陶瓷', en: 'Ceramics' },
-  { value: 'leather', zh: '皮具', en: 'Leather' },
-  { value: 'textile', zh: '织物', en: 'Textiles' },
-  { value: 'food', zh: '食品', en: 'Food' },
-  { value: 'handcraft', zh: '手作', en: 'Handcraft' },
-  { value: 'service', zh: '服务', en: 'Services' },
-]
+const CATEGORY_VALUES = ['all', 'ceramics', 'leather', 'textile', 'food', 'handcraft', 'service'] as const
 
 interface ArtisanEntry {
   artisan: User
@@ -24,12 +17,12 @@ interface ArtisanEntry {
 
 export default function HomePage({ params }: { params: { locale: string } }) {
   const { locale } = params
+  const t = useTranslations()
   const [entries, setEntries] = useState<ArtisanEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [activeCategory, setActiveCategory] = useState('all')
   const [inviters, setInviters] = useState<Record<string, User>>({})
 
-  // 取数：匠人（已排序） + 全部产品
   useEffect(() => {
     const fetchData = async () => {
       const marketFilter = locale === 'en' ? ['intl'] : ['cn']
@@ -53,14 +46,12 @@ export default function HomePage({ params }: { params: { locale: string } }) {
       const allArtisans = (artisansRes.data || []) as User[]
       const allProducts = (productsRes.data || []) as Product[]
 
-      // 按匠人分组
       const productMap = new Map<string, Product[]>()
       allProducts.forEach((p) => {
         if (!productMap.has(p.artisan_id)) productMap.set(p.artisan_id, [])
         productMap.get(p.artisan_id)!.push(p)
       })
 
-      // 只保留有产品的匠人，按 sort_order → created_at 排
       const result: ArtisanEntry[] = allArtisans
         .filter((a) => productMap.has(a.id))
         .map((a) => ({
@@ -70,7 +61,6 @@ export default function HomePage({ params }: { params: { locale: string } }) {
 
       setEntries(result)
 
-      // 取邀请人信息
       const inviterIds = result
         .map((e) => e.artisan.invited_by)
         .filter((id): id is string => !!id)
@@ -90,10 +80,8 @@ export default function HomePage({ params }: { params: { locale: string } }) {
     fetchData()
   }, [])
 
-  // 分类筛选
   const filteredEntries = useMemo(() => {
     if (!entries.length) return []
-
     return entries
       .map((e) => {
         const matched =
@@ -111,7 +99,6 @@ export default function HomePage({ params }: { params: { locale: string } }) {
 
   const totalProducts = entries.reduce((s, e) => s + e.allProducts.length, 0)
 
-  // ── 渲染 ──
   return (
     <div className="min-h-screen bg-[#FDFAF5]">
       {/* Hero */}
@@ -127,24 +114,21 @@ export default function HomePage({ params }: { params: { locale: string } }) {
             爱伴行 · AIBANXING
           </p>
           <h1 className="font-serif text-4xl md:text-6xl font-bold text-[#2C2420] mb-4 leading-tight">
-            {locale === 'zh' ? '遇见有温度的好物' : 'Discover things made with love'}
+            {t('home.hero_title')}
           </h1>
-          <p className="font-serif italic text-[#6B4C35] text-lg md:text-xl mb-2">
-            {locale === 'zh' ? '' : 'Discover things made with love'}
-          </p>
           <p className="text-[#9E9189] text-sm md:text-base mb-8">
-            {locale === 'zh' ? '每一件，都有人为它作证' : 'Every piece, personally vouched for'}
+            {t('home.hero_subtitle')}
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-2">
             <Link
               href={`/${locale}/artisans`}
               className="inline-flex items-center gap-2 bg-[#F5A623] text-white px-8 py-3 rounded-full text-sm font-medium hover:bg-[#E09510] transition-colors"
             >
-              {locale === 'zh' ? '探索所有匠人' : 'Explore artisans'} →
+              {t('home.cta')} →
             </Link>
             <UnifiedShare
-              title={locale === 'zh' ? '爱伴行 · 遇见有温度的好物' : 'AiBanXing · Things made with love'}
-              desc={locale === 'zh' ? '每一件好物，都有人为它作证' : 'Every piece, personally vouched for'}
+              title={`AiBanXing · ${t('home.hero_title')}`}
+              desc={t('home.hero_subtitle')}
               imgUrl={'https://aibanxing.oss-cn-hangzhou.aliyuncs.com/uploads/og-image.jpg'}
               pageUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/${locale}`}
               locale={locale}
@@ -157,11 +141,11 @@ export default function HomePage({ params }: { params: { locale: string } }) {
       {/* 信任概念条 */}
       <div className="border-y border-[#E8DDD4] bg-[#FDFAF5]">
         <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-center gap-4 md:gap-8 text-xs text-[#9E9189]">
-          <span>🔒 {locale === 'zh' ? '仅限受邀加入' : 'Invitation only'}</span>
+          <span>🔒 {t('home.trust_invite')}</span>
           <span className="hidden md:inline text-[#E8DDD4]">·</span>
-          <span>✍️ {locale === 'zh' ? '每位匠人都有真实背书' : 'Real endorsements'}</span>
+          <span>✍️ {t('home.trust_endorse')}</span>
           <span className="hidden md:inline text-[#E8DDD4]">·</span>
-          <span>✨ {locale === 'zh' ? '由平台精选' : 'Curated with care'}</span>
+          <span>✨ {t('home.trust_curated')}</span>
         </div>
       </div>
 
@@ -169,25 +153,23 @@ export default function HomePage({ params }: { params: { locale: string } }) {
       <div className="sticky top-14 z-40 bg-[#FDFAF5]/95 backdrop-blur-sm border-b border-[#E8DDD4]/60">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-            {CATEGORIES.map((cat) => (
+            {CATEGORY_VALUES.map((value) => (
               <button
-                key={cat.value}
-                onClick={() => setActiveCategory(cat.value)}
+                key={value}
+                onClick={() => setActiveCategory(value)}
                 className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm transition-colors ${
-                  activeCategory === cat.value
+                  activeCategory === value
                     ? 'bg-[#F5A623] text-white font-medium'
                     : 'bg-[#F5EFE6] text-[#9E9189] hover:text-[#2C2420]'
                 }`}
               >
-                {locale === 'zh' ? cat.zh : cat.en}
+                {t(`category.${value}`)}
               </button>
             ))}
           </div>
           {!loading && (
             <p className="text-xs text-[#9E9189] mt-2">
-              {locale === 'zh'
-                ? `${filteredEntries.length} 位匠人 · ${totalProducts} 件作品`
-                : `${filteredEntries.length} artisans · ${totalProducts} works`}
+              {t('home.count', { artisans: filteredEntries.length, works: totalProducts })}
             </p>
           )}
         </div>
@@ -200,7 +182,7 @@ export default function HomePage({ params }: { params: { locale: string } }) {
         ) : filteredEntries.length === 0 ? (
           <div className="text-center py-20 text-[#9E9189]">
             <p className="text-4xl mb-4">🌿</p>
-            <p>{locale === 'zh' ? '这个品类即将上线，敬请期待' : 'Coming soon'}</p>
+            <p>{t('common.coming_soon')}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-10">
@@ -221,7 +203,6 @@ export default function HomePage({ params }: { params: { locale: string } }) {
   )
 }
 
-// ── 匠人区域 ──
 function ArtisanZone({
   artisan,
   products,
@@ -235,17 +216,15 @@ function ArtisanZone({
   inviter?: User
   locale: string
 }) {
+  const t = useTranslations()
   const bio = locale === 'en' && artisan.bio_en ? artisan.bio_en : artisan.bio
-  const catLabel = locale === 'en' && artisan.category
-    ? (CATEGORIES.find((c) => c.value === artisan.category)?.['en'] || artisan.category)
-    : (CATEGORIES.find((c) => c.value === artisan.category)?.['zh'] || artisan.category)
+  const catLabel = artisan.category ? t(`category.${artisan.category}`) : null
+  const city = locale === 'en' && artisan.city_en ? artisan.city_en : artisan.city
 
   return (
     <section className="bg-white rounded-2xl border border-[#E8DDD4] overflow-hidden">
-      {/* 匠人信息头 */}
       <div className="p-4 md:p-6">
         <div className="flex items-start gap-4">
-          {/* 头像 */}
           <Link
             href={`/${locale}/artisans/${artisan.id}`}
             className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-full overflow-hidden bg-[#E8C99A] flex items-center justify-center"
@@ -265,7 +244,6 @@ function ArtisanZone({
             )}
           </Link>
 
-          {/* 信息 */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
               <Link
@@ -274,13 +252,13 @@ function ArtisanZone({
               >
                 {artisan.name}
               </Link>
-              {artisan.category && (
+              {catLabel && (
                 <span className="text-xs bg-[#F5A623] text-white px-2.5 py-0.5 rounded-full">
                   {catLabel}
                 </span>
               )}
-              {artisan.city && (
-                <span className="text-xs text-[#9E9189]">📍 {artisan.city}</span>
+              {city && (
+                <span className="text-xs text-[#9E9189]">📍 {city}</span>
               )}
             </div>
 
@@ -290,22 +268,17 @@ function ArtisanZone({
               </div>
             )}
 
-            {/* 信任归属 */}
             <div className="flex items-center gap-2 text-xs text-[#9E9189]">
               {inviter ? (
                 <>
                   <div className="w-5 h-5 rounded-full bg-[#FEF6E9] flex items-center justify-center text-[#854F0B] text-[10px] font-medium flex-shrink-0">
                     {inviter.name?.[0]}
                   </div>
-                  <span>
-                    {locale === 'zh'
-                      ? `由 ${inviter.name} 邀请并推荐`
-                      : `Vouched by ${inviter.name}`}
-                  </span>
+                  <span>{t('home.vouched_by', { name: inviter.name })}</span>
                 </>
               ) : (
                 <span className="text-[#F5A623] font-medium">
-                  {locale === 'zh' ? '创始成员' : 'Founding member'}
+                  {t('home.founding_member')}
                 </span>
               )}
               <span className="text-[#E8DDD4]">·</span>
@@ -313,14 +286,13 @@ function ArtisanZone({
                 href={`/${locale}/artisans/${artisan.id}`}
                 className="text-[#F5A623] hover:underline font-medium"
               >
-                {locale === 'zh' ? `认识 ${artisan.name} →` : `Meet ${artisan.name} →`}
+                {t('home.meet_artisan', { name: artisan.name })}
               </Link>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 产品网格 */}
       {products.length > 0 && (
         <div className="border-t border-[#E8DDD4] px-4 md:px-6 py-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -329,16 +301,13 @@ function ArtisanZone({
             ))}
           </div>
 
-          {/* 有更多产品时显示"查看全部"按钮 */}
           {totalCount > 4 && (
             <div className="mt-3">
               <Link
                 href={`/${locale}/artisans/${artisan.id}`}
                 className="block text-center text-sm text-[#F5A623] font-medium py-2 border border-[#E8DDD4] rounded-xl hover:bg-[#FEF6E9] transition-colors"
               >
-                {locale === 'zh'
-                  ? `查看 ${artisan.name} 的全部 ${totalCount} 件作品 →`
-                  : `View all ${totalCount} works by ${artisan.name} →`}
+                {t('home.view_all_works', { name: artisan.name, count: totalCount })}
               </Link>
             </div>
           )}
@@ -348,13 +317,11 @@ function ArtisanZone({
   )
 }
 
-// ── 匠人区内产品卡片 ──
 function ZoneProductCard({ product, locale }: { product: Product; locale: string }) {
+  const t = useTranslations()
   const name = locale === 'en' && product.name_en ? product.name_en : product.name
   const coverImage = product.images?.[0]
-  const catLabel = product.category
-    ? CATEGORIES.find((c) => c.value === product.category)?.[locale === 'zh' ? 'zh' : 'en']
-    : null
+  const catLabel = product.category ? t(`category.${product.category}`) : null
 
   return (
     <Link
@@ -387,12 +354,12 @@ function ZoneProductCard({ product, locale }: { product: Product; locale: string
         </p>
         <div className="flex items-center gap-1.5">
           <span className="text-xs bg-[#F5A623] text-white px-2 py-0.5 rounded-full font-medium">
-            {locale === 'zh' ? '初心价' : 'Origin Price'}
+            {t('common.origin_price')}
           </span>
           <span className="text-sm font-semibold text-[#2C2420]">
             {locale === 'en'
-              ? (product.price_usd ? `$${product.price_usd}` : 'Inquire')
-              : (product.price ? `¥${product.price}` : '询价')}
+              ? (product.price_usd ? `$${product.price_usd}` : t('common.inquire'))
+              : (product.price ? `¥${product.price}` : t('common.inquire'))}
           </span>
         </div>
       </div>
@@ -400,7 +367,6 @@ function ZoneProductCard({ product, locale }: { product: Product; locale: string
   )
 }
 
-// ── 加载骨架 ──
 function SkeletonZone() {
   return (
     <div className="flex flex-col gap-10">

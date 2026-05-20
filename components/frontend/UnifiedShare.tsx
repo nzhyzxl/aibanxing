@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { useWxAuth } from '@/lib/wx-auth'
 
 interface UnifiedShareProps {
@@ -11,8 +12,16 @@ interface UnifiedShareProps {
   variant?: 'button' | 'text'
 }
 
-// ── 海外版分享：Web Share API 或复制链接，无需微信 ──
-function IntlShare({ title, desc, pageUrl, variant = 'button' }: Omit<UnifiedShareProps, 'locale'>) {
+export default function UnifiedShare(props: UnifiedShareProps) {
+  if (props.locale === 'en') {
+    return <IntlShare {...props} />
+  }
+  return <CnShare {...props} />
+}
+
+// ── 海外版：Web Share API 或复制链接，无需微信 ──
+function IntlShare({ title, desc, pageUrl, variant = 'button' }: UnifiedShareProps) {
+  const t = useTranslations('share')
   const [copied, setCopied] = useState(false)
 
   const handleShare = () => {
@@ -32,7 +41,7 @@ function IntlShare({ title, desc, pageUrl, variant = 'button' }: Omit<UnifiedSha
       className="w-full flex items-center justify-center gap-2 bg-[#F5A623] text-white py-3.5 rounded-2xl font-medium text-base hover:bg-[#E09510] transition-colors"
     >
       <ShareIcon />
-      {copied ? 'Link copied!' : 'Share with friends'}
+      {copied ? t('copied') : t('btn')}
     </button>
   ) : (
     <button
@@ -40,82 +49,14 @@ function IntlShare({ title, desc, pageUrl, variant = 'button' }: Omit<UnifiedSha
       className="text-sm text-[#F5A623] font-medium flex items-center gap-1 hover:underline"
     >
       <ShareIcon size={14} />
-      {copied ? 'Link copied! →' : 'Share with a friend →'}
+      {copied ? `${t('copied')} →` : t('text_link')}
     </button>
   )
 }
 
-function toAbsoluteUrl(url: string): string {
-  if (!url) return ''
-  if (url.startsWith('http://') || url.startsWith('https://')) return url
-  if (typeof window !== 'undefined') return `${window.location.origin}${url}`
-  return url
-}
-
-// 每次页面 URL 变化都重新签名，不缓存状态
-async function initWxForPage(pageHref: string): Promise<boolean> {
-  try {
-    // 签名 URL 必须去掉 # 后的内容
-    const signUrl = pageHref.split('#')[0]
-    const res = await fetch(`/api/wechat?url=${encodeURIComponent(signUrl)}`)
-    const config = await res.json()
-    if (!config.appId || config.error) return false
-
-    // 动态加载 SDK（只加载一次）
-    if (!(window as any).wx) {
-      await new Promise<void>((resolve, reject) => {
-        const s = document.createElement('script')
-        s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js'
-        s.onload = () => resolve()
-        s.onerror = () => reject()
-        document.head.appendChild(s)
-      })
-    }
-
-    const wx = (window as any).wx
-
-    // 每次都重新调用 wx.config（微信要求每个页面都要重新配置）
-    await new Promise<void>((resolve) => {
-      wx.config({
-        debug: false,
-        appId: config.appId,
-        timestamp: config.timestamp,
-        nonceStr: config.nonceStr,
-        signature: config.signature,
-        jsApiList: ['updateAppMessageShareData', 'updateTimelineShareData'],
-      })
-      wx.ready(() => resolve())
-      wx.error((err: any) => {
-        console.warn('[wx.config error]', JSON.stringify(err))
-        resolve() // 即使失败也 resolve，不阻塞后续流程
-      })
-    })
-    return true
-  } catch (e) {
-    console.warn('[initWxForPage error]', e)
-    return false
-  }
-}
-
-function applyWxShare(title: string, desc: string, imgUrl: string, link: string) {
-  try {
-    const wx = (window as any).wx
-    if (!wx) return
-    const absImg = toAbsoluteUrl(imgUrl)
-    wx.ready(() => {
-      wx.updateAppMessageShareData({ title, desc, link, imgUrl: absImg })
-      wx.updateTimelineShareData({ title, link, imgUrl: absImg })
-    })
-  } catch {}
-}
-
-export default function UnifiedShare({
-  title, desc, imgUrl, pageUrl, locale, variant = 'button'
-}: UnifiedShareProps) {
-  if (locale === 'en') {
-    return <IntlShare title={title} desc={desc} imgUrl={imgUrl} pageUrl={pageUrl} variant={variant} />
-  }
-
+// ── 国内版：微信分享 + 带 ref 追踪 ──
+function CnShare({ title, desc, imgUrl, pageUrl, variant = 'button' }: UnifiedShareProps) {
+  const t = useTranslations('share')
   const { user, loading } = useWxAuth()
   const [showGuide, setShowGuide] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -127,28 +68,24 @@ export default function UnifiedShare({
     return userId ? `${base}?ref=${userId}` : base
   }
 
-  // 页面加载完成后初始化，用 setTimeout 确保 URL 已经稳定
   useEffect(() => {
     const timer = setTimeout(async () => {
       const href = window.location.href
-      if (href === currentHref.current) return // URL 没变，不重复初始化
+      if (href === currentHref.current) return
       currentHref.current = href
 
       const ok = await initWxForPage(href)
       if (!ok) return
 
-      const shareLink = buildShareUrl(user?.id)
-      applyWxShare(title, desc, imgUrl, shareLink)
-    }, 300) // 等 300ms 让页面 URL 稳定
+      applyWxShare(title, desc, imgUrl, buildShareUrl(user?.id))
+    }, 300)
 
     return () => clearTimeout(timer)
-  }, [pageUrl]) // pageUrl 变化时重新初始化
+  }, [pageUrl])
 
-  // 登录状态变化后更新分享链接
   useEffect(() => {
     if (loading) return
-    const shareLink = buildShareUrl(user?.id)
-    applyWxShare(title, desc, imgUrl, shareLink)
+    applyWxShare(title, desc, imgUrl, buildShareUrl(user?.id))
   }, [user?.id, loading])
 
   useEffect(() => {
@@ -169,19 +106,16 @@ export default function UnifiedShare({
     guideTimer.current = setTimeout(closeGuide, 8000)
   }
 
-  const handleShare = () => {
-    if (loading) return
-    if (!user) { setShowLoginModal(true); return }
-    doShare(user.id)
+  const copyLink = (url: string) => {
+    navigator.clipboard?.writeText(url)
+      .then(() => alert(t('copied')))
+      .catch(() => {})
   }
 
   const doShare = (userId: string) => {
     const shareLink = buildShareUrl(userId)
     const isWeChat = /MicroMessenger/i.test(navigator.userAgent)
-    if (isWeChat) {
-      openGuide(shareLink)
-      return
-    }
+    if (isWeChat) { openGuide(shareLink); return }
     if (navigator.share) {
       navigator.share({ title, text: desc, url: shareLink }).catch(() => copyLink(shareLink))
     } else {
@@ -189,10 +123,10 @@ export default function UnifiedShare({
     }
   }
 
-  const copyLink = (url: string) => {
-    navigator.clipboard?.writeText(url)
-      .then(() => alert(locale === 'zh' ? '链接已复制 🧧' : 'Link copied!'))
-      .catch(() => {})
+  const handleShare = () => {
+    if (loading) return
+    if (!user) { setShowLoginModal(true); return }
+    doShare(user.id)
   }
 
   return (
@@ -201,13 +135,13 @@ export default function UnifiedShare({
         <button onClick={handleShare}
           className="w-full flex items-center justify-center gap-2 bg-[#F5A623] text-white py-3.5 rounded-2xl font-medium text-base hover:bg-[#E09510] transition-colors">
           <ShareIcon />
-          {locale === 'zh' ? '分享给朋友' : 'Share with friends'}
+          {t('btn')}
         </button>
       ) : (
         <button onClick={handleShare}
           className="text-sm text-[#F5A623] font-medium flex items-center gap-1 hover:underline">
           <ShareIcon size={14} />
-          {locale === 'zh' ? '分享给朋友的朋友 →' : 'Share with a friend →'}
+          {t('text_link')}
         </button>
       )}
 
@@ -223,27 +157,25 @@ export default function UnifiedShare({
           <div className="absolute top-16 right-3 bg-white rounded-2xl px-5 py-4 shadow-xl max-w-[220px]"
             onClick={e => e.stopPropagation()}>
             <p className="text-sm font-semibold text-[#2C2420] text-center mb-1">
-              {locale === 'zh' ? '点右上角「···」' : 'Tap ··· in top right'}
+              {t('wechat_guide_title')}
             </p>
             <p className="text-xs text-[#9E9189] text-center leading-relaxed">
-              {locale === 'zh'
-                ? '选择「发送给朋友」或「分享到朋友圈」'
-                : 'Send to friend or Share to Moments'}
+              {t('wechat_guide_step')}
             </p>
             <button onClick={closeGuide}
               className="w-full mt-3 text-xs text-[#9E9189] border border-[#E8DDD4] rounded-lg py-1.5 hover:bg-[#F5EFE6] transition-colors">
-              {locale === 'zh' ? '✓ 已分享，关闭' : '✓ Done, close'}
+              {t('wechat_guide_done')}
             </button>
           </div>
           <p className="absolute bottom-10 left-0 right-0 text-center text-white/50 text-xs">
-            {locale === 'zh' ? '点击任意处关闭' : 'Tap anywhere to close'}
+            {t('wechat_dismiss')}
           </p>
         </div>
       )}
 
       {/* 登录弹窗 */}
       {showLoginModal && (
-        <LoginModal locale={locale}
+        <LoginModal
           onClose={() => setShowLoginModal(false)}
           onLogin={() => setShowLoginModal(false)}
           onSkip={() => {
@@ -259,9 +191,10 @@ export default function UnifiedShare({
   )
 }
 
-function LoginModal({ locale, onClose, onLogin, onSkip }: {
-  locale: string; onClose: () => void; onLogin: () => void; onSkip: () => void
+function LoginModal({ onClose, onLogin, onSkip }: {
+  onClose: () => void; onLogin: () => void; onSkip: () => void
 }) {
+  const t = useTranslations('share')
   const { login } = useWxAuth()
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -273,26 +206,80 @@ function LoginModal({ locale, onClose, onLogin, onSkip }: {
             <span className="text-3xl">🧧</span>
           </div>
           <h3 className="font-serif text-lg font-semibold text-[#2C2420]">
-            {locale === 'zh' ? '登录后分享，让爱流动' : 'Login to share with attribution'}
+            {t('login_title')}
           </h3>
           <p className="text-sm text-[#9E9189] mt-2 leading-relaxed">
-            {locale === 'zh'
-              ? '微信登录后，分享链接会带上你的专属标识。朋友通过你的链接成交后，手艺人会送上感谢红包 🧧'
-              : 'Your share link carries your identity. Friends who buy through it earn you a thank-you gift.'}
+            {t('login_desc')}
           </p>
         </div>
         <button onClick={() => { login(window.location.pathname + window.location.search); onLogin() }}
           className="w-full flex items-center justify-center gap-3 bg-[#07C160] text-white py-3.5 rounded-2xl font-medium hover:bg-[#06AD56] transition-colors mb-3">
           <WechatSvg />
-          {locale === 'zh' ? '微信一键登录' : 'Login with WeChat'}
+          {t('login_wechat')}
         </button>
         <button onClick={onSkip}
           className="w-full text-center text-sm text-[#9E9189] py-2 hover:text-[#2C2420] transition-colors">
-          {locale === 'zh' ? '先不了，直接分享' : 'Skip, share without login'}
+          {t('login_skip')}
         </button>
       </div>
     </div>
   )
+}
+
+function toAbsoluteUrl(url: string): string {
+  if (!url) return ''
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  if (typeof window !== 'undefined') return `${window.location.origin}${url}`
+  return url
+}
+
+async function initWxForPage(pageHref: string): Promise<boolean> {
+  try {
+    const signUrl = pageHref.split('#')[0]
+    const res = await fetch(`/api/wechat?url=${encodeURIComponent(signUrl)}`)
+    const config = await res.json()
+    if (!config.appId || config.error) return false
+
+    if (!(window as any).wx) {
+      await new Promise<void>((resolve, reject) => {
+        const s = document.createElement('script')
+        s.src = 'https://res.wx.qq.com/open/js/jweixin-1.6.0.js'
+        s.onload = () => resolve()
+        s.onerror = () => reject()
+        document.head.appendChild(s)
+      })
+    }
+
+    const wx = (window as any).wx
+    await new Promise<void>((resolve) => {
+      wx.config({
+        debug: false,
+        appId: config.appId,
+        timestamp: config.timestamp,
+        nonceStr: config.nonceStr,
+        signature: config.signature,
+        jsApiList: ['updateAppMessageShareData', 'updateTimelineShareData'],
+      })
+      wx.ready(() => resolve())
+      wx.error((err: any) => { console.warn('[wx.config error]', JSON.stringify(err)); resolve() })
+    })
+    return true
+  } catch (e) {
+    console.warn('[initWxForPage error]', e)
+    return false
+  }
+}
+
+function applyWxShare(title: string, desc: string, imgUrl: string, link: string) {
+  try {
+    const wx = (window as any).wx
+    if (!wx) return
+    const absImg = toAbsoluteUrl(imgUrl)
+    wx.ready(() => {
+      wx.updateAppMessageShareData({ title, desc, link, imgUrl: absImg })
+      wx.updateTimelineShareData({ title, link, imgUrl: absImg })
+    })
+  } catch {}
 }
 
 function ShareIcon({ size = 18 }: { size?: number }) {

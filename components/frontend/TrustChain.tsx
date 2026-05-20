@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import type { Endorsement, User } from '@/lib/supabase'
 
 interface TrustChainProps {
@@ -9,21 +10,20 @@ interface TrustChainProps {
 }
 
 export default function TrustChain({ artisan, endorsements, locale }: TrustChainProps) {
+  const t = useTranslations('profile')
   return (
     <section className="px-4 py-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-serif text-xl text-warm-charcoal">
-          {locale === 'zh' ? '朋友的信任' : 'Vouched by Friends'}
+          {t('trust_title')}
         </h2>
         <span className="text-sm text-amber-brand font-medium">
-          {endorsements.length} {locale === 'zh' ? '条推荐' : 'endorsements'}
+          {t('trust_count', { count: endorsements.length })}
         </span>
       </div>
 
       <p className="text-sm text-warm-gray mb-6 leading-relaxed">
-        {locale === 'zh'
-          ? '这里的每一条推荐，都源于真实的人际关系——不是陌生人的评分，而是朋友亲口告知的那种信任。'
-          : 'Every endorsement here traces back to a real relationship — not star ratings, but friend-to-friend trust.'}
+        {t('trust_desc')}
       </p>
 
       <div className="relative">
@@ -43,8 +43,7 @@ export default function TrustChain({ artisan, endorsements, locale }: TrustChain
             {artisan.name[0]}
           </div>
           <span className="text-sm text-warm-gray">
-            {artisan.name}
-            {locale === 'zh' ? ' · 手工艺人' : ' · Artisan'}
+            {artisan.name}{t('artisan_suffix')}
           </span>
         </div>
       </div>
@@ -63,6 +62,7 @@ function EndorsementCard({
   isLast: boolean
   locale: string
 }) {
+  const t = useTranslations('profile')
   const [expanded, setExpanded] = useState(isFirst)
   const content = locale === 'en' && endorsement.content_en
     ? endorsement.content_en
@@ -70,17 +70,14 @@ function EndorsementCard({
 
   return (
     <div className="relative flex gap-3 mb-4">
-      {/* 连接线 */}
       {!isLast && (
         <div className="absolute left-4 top-10 bottom-0 w-px border-l-2 border-dashed border-amber-brand/30" />
       )}
 
-      {/* 背书人头像 */}
       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-light flex items-center justify-center text-amber-dark text-sm font-medium z-10">
         {endorsement.endorser.name[0]}
       </div>
 
-      {/* 背书卡片 */}
       <div className="flex-1 bg-white rounded-card border border-warm-border p-4">
         <div className="flex items-center gap-2 mb-2">
           <span className="font-medium text-sm text-warm-charcoal">
@@ -106,9 +103,7 @@ function EndorsementCard({
             onClick={() => setExpanded(!expanded)}
             className="text-xs text-amber-brand mt-2 hover:underline"
           >
-            {expanded
-              ? (locale === 'zh' ? '收起' : 'Show less')
-              : (locale === 'zh' ? '展开' : 'Read more')}
+            {expanded ? t('collapse') : t('expand')}
           </button>
         )}
       </div>

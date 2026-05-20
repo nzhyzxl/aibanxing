@@ -2,11 +2,13 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import { useWxAuth } from '@/lib/wx-auth'
 import { supabase } from '@/lib/supabase'
 
 export default function MySharesPage({ params }: { params: { locale: string } }) {
   const { locale } = params
+  const t = useTranslations('shares')
   const { user, loading, login } = useWxAuth()
   const [logs, setLogs] = useState<any[]>([])
   const [transactions, setTransactions] = useState<any[]>([])
@@ -33,10 +35,13 @@ export default function MySharesPage({ params }: { params: { locale: string } })
     fetchData()
   }, [user])
 
+  const dateStr = (iso: string) =>
+    new Date(iso).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US')
+
   if (loading || fetching) {
     return (
       <div className="min-h-screen bg-[#FDFAF5] flex items-center justify-center">
-        <p className="text-[#9E9189] text-sm animate-pulse">加载中...</p>
+        <p className="text-[#9E9189] text-sm animate-pulse">{t('loading')}</p>
       </div>
     )
   }
@@ -45,26 +50,28 @@ export default function MySharesPage({ params }: { params: { locale: string } })
     return (
       <div className="min-h-screen bg-[#FDFAF5] flex flex-col items-center justify-center px-4 text-center">
         <div className="text-5xl mb-4">🧧</div>
-        <h1 className="font-serif text-2xl font-bold text-[#2C2420] mb-2">
-          {locale === 'zh' ? '我的分享记录' : 'My Shares'}
-        </h1>
+        <h1 className="font-serif text-2xl font-bold text-[#2C2420] mb-2">{t('title')}</h1>
         <p className="text-[#9E9189] text-sm mb-6 max-w-xs leading-relaxed">
-          {locale === 'zh'
-            ? '登录后可以看到你分享了哪些产品，以及产生了哪些感谢红包'
-            : 'Login to see your share history and thank-you gifts'}
+          {t('login_prompt')}
         </p>
         <button
           onClick={() => login(`/${locale}/my-shares`)}
           className="flex items-center gap-2 bg-[#07C160] text-white px-8 py-3 rounded-full font-medium hover:bg-[#06AD56] transition-colors"
         >
-          微信登录查看
+          {t('login_btn')}
         </button>
       </div>
     )
   }
 
-  const totalThankYou = transactions.filter(t => t.is_settled).reduce((s, t) => s + (t.thank_you_amount || 0), 0)
-  const pendingThankYou = transactions.filter(t => !t.is_settled && t.thank_you_amount).reduce((s, t) => s + (t.thank_you_amount || 0), 0)
+  const totalThankYou = transactions.filter(tx => tx.is_settled).reduce((s: number, tx: any) => s + (tx.thank_you_amount || 0), 0)
+  const pendingThankYou = transactions.filter(tx => !tx.is_settled && tx.thank_you_amount).reduce((s: number, tx: any) => s + (tx.thank_you_amount || 0), 0)
+
+  const stats = [
+    { label: t('stat_shares'), value: logs.length, icon: '📤' },
+    { label: t('stat_referrals'), value: transactions.length, icon: '🤝' },
+    { label: t('stat_gifts'), value: `¥${totalThankYou}`, icon: '🧧' },
+  ]
 
   return (
     <div className="min-h-screen bg-[#FDFAF5]">
@@ -78,7 +85,6 @@ export default function MySharesPage({ params }: { params: { locale: string } })
                 alt={user.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  // 头像加载失败时显示首字母
                   e.currentTarget.style.display = 'none'
                   e.currentTarget.nextElementSibling?.classList.remove('hidden')
                 }}
@@ -90,17 +96,13 @@ export default function MySharesPage({ params }: { params: { locale: string } })
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-serif font-semibold text-lg text-[#2C2420] truncate">{user.name}</p>
-            <p className="text-xs text-[#9E9189]">爱伴行分享者</p>
+            <p className="text-xs text-[#9E9189]">{t('identity')}</p>
           </div>
         </div>
 
         {/* 统计 */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          {[
-            { label: '分享次数', value: logs.length, icon: '📤' },
-            { label: '引荐成交', value: transactions.length, icon: '🤝' },
-            { label: '已收红包', value: `¥${totalThankYou}`, icon: '🧧' },
-          ].map((s, i) => (
+          {stats.map((s, i) => (
             <div key={i} className="bg-white rounded-2xl border border-[#E8DDD4] p-4 text-center">
               <p className="text-2xl mb-1">{s.icon}</p>
               <p className="font-bold text-xl text-[#2C2420]">{s.value}</p>
@@ -114,8 +116,10 @@ export default function MySharesPage({ params }: { params: { locale: string } })
           <div className="bg-[#FEF6E9] border border-[#F5A623]/30 rounded-2xl p-4 mb-6 flex items-center gap-3">
             <span className="text-2xl">🧧</span>
             <div>
-              <p className="font-medium text-[#854F0B] text-sm">有 ¥{pendingThankYou} 的感谢红包等待发放</p>
-              <p className="text-xs text-[#9E9189] mt-0.5">手艺人会通过微信直接发给你</p>
+              <p className="font-medium text-[#854F0B] text-sm">
+                {t('pending_title', { amount: pendingThankYou })}
+              </p>
+              <p className="text-xs text-[#9E9189] mt-0.5">{t('pending_note')}</p>
             </div>
           </div>
         )}
@@ -123,9 +127,9 @@ export default function MySharesPage({ params }: { params: { locale: string } })
         {/* 成交记录 */}
         {transactions.length > 0 && (
           <section className="mb-8">
-            <h2 className="font-serif text-lg font-semibold text-[#2C2420] mb-4">引荐成交记录</h2>
+            <h2 className="font-serif text-lg font-semibold text-[#2C2420] mb-4">{t('tx_title')}</h2>
             <div className="space-y-3">
-              {transactions.map(tx => (
+              {transactions.map((tx: any) => (
                 <div key={tx.id} className="bg-white rounded-2xl border border-[#E8DDD4] p-4 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#F5EFE6] flex-shrink-0">
                     {tx.product?.images?.[0]
@@ -134,14 +138,16 @@ export default function MySharesPage({ params }: { params: { locale: string } })
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm text-[#2C2420] truncate">{tx.product?.name || '-'}</p>
-                    <p className="text-xs text-[#9E9189] mt-0.5">{tx.artisan?.name} · {new Date(tx.created_at).toLocaleDateString('zh-CN')}</p>
+                    <p className="text-xs text-[#9E9189] mt-0.5">{tx.artisan?.name} · {dateStr(tx.created_at)}</p>
                   </div>
                   {tx.thank_you_amount && (
                     <div className="text-right flex-shrink-0">
                       <p className={`text-sm font-semibold ${tx.is_settled ? 'text-[#07C160]' : 'text-[#F5A623]'}`}>
                         🧧 ¥{tx.thank_you_amount}
                       </p>
-                      <p className="text-xs text-[#9E9189] mt-0.5">{tx.is_settled ? '已收到' : '待发放'}</p>
+                      <p className="text-xs text-[#9E9189] mt-0.5">
+                        {tx.is_settled ? t('tx_settled') : t('tx_pending')}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -152,16 +158,18 @@ export default function MySharesPage({ params }: { params: { locale: string } })
 
         {/* 分享记录 */}
         <section>
-          <h2 className="font-serif text-lg font-semibold text-[#2C2420] mb-4">最近分享记录</h2>
+          <h2 className="font-serif text-lg font-semibold text-[#2C2420] mb-4">{t('log_title')}</h2>
           {logs.length === 0 ? (
             <div className="text-center py-10 text-[#9E9189]">
               <p className="text-3xl mb-3">📤</p>
-              <p className="text-sm">还没有分享记录，去分享一个你喜欢的产品吧</p>
-              <Link href={`/${locale}`} className="text-[#F5A623] text-sm mt-3 inline-block">浏览产品 →</Link>
+              <p className="text-sm">{t('log_empty')}</p>
+              <Link href={`/${locale}`} className="text-[#F5A623] text-sm mt-3 inline-block">
+                {t('log_browse')}
+              </Link>
             </div>
           ) : (
             <div className="space-y-3">
-              {logs.map(log => (
+              {logs.map((log: any) => (
                 <div key={log.id} className="bg-white rounded-2xl border border-[#E8DDD4] p-4 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#F5EFE6] flex-shrink-0">
                     {log.product?.images?.[0]
@@ -169,10 +177,16 @@ export default function MySharesPage({ params }: { params: { locale: string } })
                       : <div className="w-full h-full flex items-center justify-center text-[#C8A882]">🌿</div>}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-[#2C2420] truncate">{log.product?.name || '产品'}</p>
-                    <p className="text-xs text-[#9E9189] mt-0.5">{log.product?.artisan?.name} · {new Date(log.created_at).toLocaleDateString('zh-CN')}</p>
+                    <p className="font-medium text-sm text-[#2C2420] truncate">
+                      {log.product?.name || t('log_product_fallback')}
+                    </p>
+                    <p className="text-xs text-[#9E9189] mt-0.5">
+                      {log.product?.artisan?.name} · {dateStr(log.created_at)}
+                    </p>
                   </div>
-                  <span className="text-xs text-[#9E9189] bg-[#F5EFE6] px-2 py-1 rounded-full flex-shrink-0">📤 已分享</span>
+                  <span className="text-xs text-[#9E9189] bg-[#F5EFE6] px-2 py-1 rounded-full flex-shrink-0">
+                    📤 {t('log_shared')}
+                  </span>
                 </div>
               ))}
             </div>

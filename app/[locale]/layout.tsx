@@ -1,22 +1,27 @@
 import { useTranslations } from 'next-intl'
+import { getMessages } from 'next-intl/server'
+import { NextIntlClientProvider } from 'next-intl'
 import Link from 'next/link'
 import { WxAuthProvider } from '@/lib/wx-auth'
 
-export default function FrontendLayout({
+export default async function FrontendLayout({
   children,
   params: { locale },
 }: {
   children: React.ReactNode
   params: { locale: string }
 }) {
+  const messages = await getMessages()
   return (
-    <WxAuthProvider>
-      <div className="min-h-screen bg-cream font-sans">
-        <Navbar locale={locale} />
-        <main>{children}</main>
-        <Footer locale={locale} />
-      </div>
-    </WxAuthProvider>
+    <NextIntlClientProvider messages={messages}>
+      <WxAuthProvider>
+        <div className="min-h-screen bg-cream font-sans">
+          <Navbar locale={locale} />
+          <main>{children}</main>
+          <Footer />
+        </div>
+      </WxAuthProvider>
+    </NextIntlClientProvider>
   )
 }
 
@@ -38,7 +43,7 @@ function Navbar({ locale }: { locale: string }) {
             {t('about')}
           </Link>
           <Link href={`/${locale}/my-shares`} className="hover:text-warm-charcoal transition-colors text-xs">
-            🧧 {locale === 'zh' ? '我的分享' : 'My Shares'}
+            🧧 {t('my_shares')}
           </Link>
           <Link
             href={`/${otherLocale}`}
@@ -52,12 +57,13 @@ function Navbar({ locale }: { locale: string }) {
   )
 }
 
-function Footer({ locale }: { locale: string }) {
+function Footer() {
+  const t = useTranslations('footer')
   return (
     <footer className="bg-cream border-t border-warm-border/40 py-12 text-center">
       <p className="font-serif text-xl text-warm-charcoal mb-2">爱伴行</p>
-      <p className="text-sm text-warm-gray">用爱与善意，陪伴美好流转</p>
-      <p className="text-xs text-warm-gray/60 mt-6">© 2026 爱伴行 AiBanXing</p>
+      <p className="text-sm text-warm-gray">{t('tagline')}</p>
+      <p className="text-xs text-warm-gray/60 mt-6">{t('copyright')}</p>
     </footer>
   )
 }

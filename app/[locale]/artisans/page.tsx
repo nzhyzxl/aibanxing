@@ -1,12 +1,14 @@
-import { Metadata } from 'next'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import type { User } from '@/lib/supabase'
+import type { Metadata } from 'next'
 import ArtisansClient from './client'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: '匠人列表 - 爱伴行',
+export async function generateMetadata({ params }: { params: { locale: string } }): Promise<Metadata> {
+  return {
+    title: params.locale === 'zh' ? '匠人列表 - 爱伴行' : 'Artisans - AiBanXing',
+  }
 }
 
 export default async function ArtisansPage({ params }: { params: { locale: string } }) {

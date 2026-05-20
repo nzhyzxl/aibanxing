@@ -2,28 +2,12 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useTranslations } from 'next-intl'
 import UnifiedShare from '@/components/frontend/UnifiedShare'
 import RichText from '@/components/frontend/RichText'
 import type { User } from '@/lib/supabase'
 
-const CATEGORIES = [
-  { value: 'all', zh: '全部', en: 'All' },
-  { value: 'ceramics', zh: '陶瓷', en: 'Ceramics' },
-  { value: 'leather', zh: '皮具', en: 'Leather' },
-  { value: 'textile', zh: '织物', en: 'Textiles' },
-  { value: 'food', zh: '食品', en: 'Food' },
-  { value: 'handcraft', zh: '手作', en: 'Handcraft' },
-  { value: 'service', zh: '服务', en: 'Services' },
-]
-
-const catLabels: Record<string, { zh: string; en: string }> = {
-  ceramics: { zh: '陶瓷', en: 'Ceramics' },
-  leather: { zh: '皮具', en: 'Leather' },
-  textile: { zh: '织物', en: 'Textiles' },
-  food: { zh: '食品', en: 'Food' },
-  handcraft: { zh: '手作', en: 'Handcraft' },
-  service: { zh: '服务', en: 'Services' },
-}
+const CATEGORY_VALUES = ['all', 'ceramics', 'leather', 'textile', 'food', 'handcraft', 'service'] as const
 
 export default function ArtisansClient({
   artisans,
@@ -34,6 +18,7 @@ export default function ArtisansClient({
   inviters: Record<string, User>
   locale: string
 }) {
+  const t = useTranslations()
   const [activeCategory, setActiveCategory] = useState('all')
 
   const filtered = useMemo(() => {
@@ -49,18 +34,16 @@ export default function ArtisansClient({
           爱伴行 · AIBANXING
         </p>
         <h1 className="font-serif text-4xl md:text-5xl font-bold text-[#2C2420] mb-4">
-          {locale === 'zh' ? '认识我们的匠人' : 'Meet Our Artisans'}
+          {t('artisans.title')}
         </h1>
         <p className="text-[#9E9189] text-base">
-          {locale === 'zh'
-            ? '每位匠人都经由真实的朋友邀请与背书'
-            : 'Every artisan is personally invited and vouched for'}
+          {t('artisans.subtitle')}
         </p>
         <div className="w-8 h-0.5 bg-[#F5A623] mx-auto mt-6 mb-6" />
         <div className="flex justify-center">
           <UnifiedShare
-            title={locale === 'zh' ? '爱伴行 · 认识我们的匠人' : 'AiBanXing · Meet Our Artisans'}
-            desc={locale === 'zh' ? '每位匠人都经由真实的朋友邀请与背书' : 'Every artisan is personally invited and vouched for'}
+            title={`AiBanXing · ${t('artisans.title')}`}
+            desc={t('artisans.subtitle')}
             imgUrl={"https://aibanxing.oss-cn-hangzhou.aliyuncs.com/uploads/og-image.jpg"}
             pageUrl={`${process.env.NEXT_PUBLIC_BASE_URL || 'https://www.aibanxing.top'}/${locale}/artisans`}
             locale={locale}
@@ -73,22 +56,22 @@ export default function ArtisansClient({
       <div className="sticky top-14 z-40 bg-[#FDFAF5]/95 backdrop-blur-sm border-b border-[#E8DDD4]/60">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {CATEGORIES.map(cat => (
+            {CATEGORY_VALUES.map(value => (
               <button
-                key={cat.value}
-                onClick={() => setActiveCategory(cat.value)}
+                key={value}
+                onClick={() => setActiveCategory(value)}
                 className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm transition-colors ${
-                  activeCategory === cat.value
+                  activeCategory === value
                     ? 'bg-[#F5A623] text-white font-medium'
                     : 'bg-[#F5EFE6] text-[#9E9189] hover:text-[#2C2420]'
                 }`}
               >
-                {locale === 'zh' ? cat.zh : cat.en}
+                {t(`category.${value}`)}
               </button>
             ))}
           </div>
           <p className="text-xs text-[#9E9189] mt-2">
-            {locale === 'zh' ? `${filtered.length} 位匠人` : `${filtered.length} artisans`}
+            {t('artisans.count', { count: filtered.length })}
           </p>
         </div>
       </div>
@@ -98,7 +81,7 @@ export default function ArtisansClient({
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-[#9E9189]">
             <p className="text-4xl mb-4">🌿</p>
-            <p>{locale === 'zh' ? '这个品类即将上线，敬请期待' : 'Coming soon'}</p>
+            <p>{t('common.coming_soon')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
@@ -117,15 +100,13 @@ export default function ArtisansClient({
       {/* 底部文案 */}
       <div className="text-center py-12 border-t border-[#E8DDD4]/40">
         <p className="font-serif italic text-[#9E9189] text-sm">
-          {locale === 'zh'
-            ? '每一件作品背后，都有一段值得被讲述的故事'
-            : 'Behind every piece, a story worth telling'}
+          {t('artisans.story_footer')}
         </p>
         <Link
           href={`/${locale}/artisans`}
           className="text-xs text-[#F5A623] mt-2 inline-block hover:underline"
         >
-          {locale === 'zh' ? '查看匠人主页 →' : 'View artisan profiles →'}
+          {t('artisans.view_profile')}
         </Link>
       </div>
     </div>
@@ -139,16 +120,17 @@ function ArtisanCard({
   inviter?: User
   locale: string
 }) {
+  const t = useTranslations()
   const bio = locale === 'en' && artisan.bio_en ? artisan.bio_en : artisan.bio
   const city = locale === 'en' && artisan.city_en ? artisan.city_en : artisan.city
-  const catLabel = artisan.category ? catLabels[artisan.category] : undefined
+  const catLabel = artisan.category ? t(`category.${artisan.category}`) : null
 
   return (
     <Link
       href={`/${locale}/artisans/${artisan.id}`}
       className="block bg-white rounded-2xl border border-[#E8DDD4] hover:border-[#F5A623] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden group"
     >
-      {/* 产品封面图区域 */}
+      {/* 头像区域 */}
       <div className="relative aspect-[4/3] bg-[#F5EFE6] overflow-hidden">
         {artisan.avatar_url ? (
           <Image src={artisan.avatar_url} alt={artisan.name} fill
@@ -163,7 +145,7 @@ function ArtisanCard({
         )}
         {catLabel && (
           <span className="absolute top-3 right-3 bg-[#F5A623] text-white text-xs px-2.5 py-0.5 rounded-full font-medium">
-            {locale === 'zh' ? catLabel.zh : catLabel.en}
+            {catLabel}
           </span>
         )}
       </div>
@@ -190,12 +172,12 @@ function ArtisanCard({
                 {inviter.name[0]}
               </div>
               <p className="text-xs text-[#9E9189] truncate">
-                {locale === 'zh' ? `由 ${inviter.name} 邀请并推荐` : `Vouched by ${inviter.name}`}
+                {t('artisans.vouched_by', { name: inviter.name })}
               </p>
             </>
           ) : (
             <p className="text-xs text-[#F5A623] font-medium">
-              {locale === 'zh' ? '创始成员' : 'Founding member'}
+              {t('artisans.founding_member')}
             </p>
           )}
         </div>
