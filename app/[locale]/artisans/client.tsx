@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import UnifiedShare from '@/components/frontend/UnifiedShare'
+import RichText from '@/components/frontend/RichText'
 import type { User } from '@/lib/supabase'
 
 const CATEGORIES = [
@@ -178,7 +179,7 @@ function ArtisanCard({
           </p>
         )}
         {bio && (
-          <p className="text-sm text-[#6B4C35] line-clamp-2 mb-3 leading-relaxed">{bio}</p>
+          <RichText content={bio} lineClamp={2} className="text-sm text-[#6B4C35] mb-3 leading-relaxed" />
         )}
 
         {/* 信任归属行 */}

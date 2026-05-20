@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Table, Tag, Switch, Popconfirm, message, Typography, Input, Button, Modal, Form, Space } from 'antd'
+import { Table, Tag, Switch, Popconfirm, message, Typography, Input, InputNumber, Button, Modal, Form, Space } from 'antd'
 import { SearchOutlined, EditOutlined } from '@ant-design/icons'
 import type { User } from '@/lib/supabase'
 
@@ -23,6 +23,20 @@ export default function ArtisansClient({ initialArtisans }: { initialArtisans: U
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [saving, setSaving] = useState(false)
   const [form] = Form.useForm()
+
+  const updateSortOrder = async (id: string, sortOrder: number) => {
+    try {
+      const res = await fetch('/api/admin/artisans/sort-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, sort_order: sortOrder }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      setArtisans(artisans.map(a => a.id === id ? { ...a, sort_order: sortOrder } : a))
+    } catch {
+      message.error('更新排序失败')
+    }
+  }
 
   const toggleStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active'
@@ -127,6 +141,21 @@ export default function ArtisansClient({ initialArtisans }: { initialArtisans: U
       dataIndex: 'created_at',
       key: 'created_at',
       render: (v: string) => new Date(v).toLocaleDateString('zh-CN'),
+    },
+    {
+      title: '排序权重',
+      dataIndex: 'sort_order',
+      key: 'sort_order',
+      width: 100,
+      render: (val: number, record: User) => (
+        <InputNumber
+          size="small"
+          min={0}
+          value={val ?? 0}
+          onChange={(v) => v !== null && updateSortOrder(record.id, v)}
+          style={{ width: 72 }}
+        />
+      ),
     },
     {
       title: '操作',

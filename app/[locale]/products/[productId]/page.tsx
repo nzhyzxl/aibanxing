@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import UnifiedShare from '@/components/frontend/UnifiedShare'
+import RichText from '@/components/frontend/RichText'
 import type { Product, User, Endorsement } from '@/lib/supabase'
 
 type EndorsementWithEndorser = Endorsement & { endorser: User }
@@ -299,7 +300,7 @@ export default function ProductDetailPage({
                 <p className="text-xs text-[#9E9189] mb-2 font-medium uppercase tracking-wider">
                   {locale === 'zh' ? '产品介绍' : 'About this piece'}
                 </p>
-                <p className="text-sm text-[#2C2420] leading-relaxed">{description}</p>
+                <RichText content={description} className="text-sm text-[#2C2420] leading-relaxed" />
               </div>
             )}
 

@@ -107,7 +107,7 @@ export default function InvitationsClient({ initialInvitations }: { initialInvit
         title="邀请详情"
       >
         {detail && (
-          <Card bordered={false}>
+          <Card variant="borderless">
             <p><Text strong>被邀请人：</Text>{detail.invitee_name}（{detail.invitee_email}）</p>
             <p><Text strong>邀请人：</Text>{detail.inviter?.name}</p>
             <div style={{ marginTop: 12 }}>
