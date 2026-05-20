@@ -102,7 +102,7 @@ export default function HomePage({ params }: { params: { locale: string } }) {
             : e.allProducts.filter((p) => p.category === activeCategory)
         return {
           artisan: e.artisan,
-          displayProducts: matched.slice(0, 3),
+          displayProducts: matched.slice(0, 4),
           totalCount: matched.length,
         }
       })
@@ -323,29 +323,15 @@ function ArtisanZone({
       {/* 产品网格 */}
       {products.length > 0 && (
         <div className="border-t border-[#E8DDD4] px-4 md:px-6 py-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             {products.map((product) => (
               <ZoneProductCard key={product.id} product={product} locale={locale} />
             ))}
-
-            {/* 如果有更多产品，显示"查看全部"占位卡片 */}
-            {totalCount > 3 && (
-              <Link
-                href={`/${locale}/artisans/${artisan.id}`}
-                className="hidden md:flex flex-col items-center justify-center bg-[#FDFAF5] rounded-xl border border-dashed border-[#E8DDD4] hover:border-[#F5A623] hover:bg-[#FEF6E9] transition-colors min-h-[180px]"
-              >
-                <span className="text-2xl mb-1">✨</span>
-                <span className="text-sm text-[#F5A623] font-medium">
-                  {locale === 'zh' ? `查看全部 ${totalCount} 件` : `View all ${totalCount}`}
-                </span>
-                <span className="text-xs text-[#9E9189] mt-0.5">→</span>
-              </Link>
-            )}
           </div>
 
-          {/* 移动端"查看全部"按钮 */}
-          {totalCount > 3 && (
-            <div className="mt-3 md:hidden">
+          {/* 有更多产品时显示"查看全部"按钮 */}
+          {totalCount > 4 && (
+            <div className="mt-3">
               <Link
                 href={`/${locale}/artisans/${artisan.id}`}
                 className="block text-center text-sm text-[#F5A623] font-medium py-2 border border-[#E8DDD4] rounded-xl hover:bg-[#FEF6E9] transition-colors"
@@ -429,8 +415,8 @@ function SkeletonZone() {
             </div>
           </div>
           <div className="border-t border-[#E8DDD4] px-4 md:px-6 py-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              {[...Array(3)].map((_, j) => (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              {[...Array(4)].map((_, j) => (
                 <div key={j} className="rounded-xl overflow-hidden">
                   <div className="aspect-[4/3] bg-[#F5EFE6]" />
                   <div className="p-2.5 space-y-2">
