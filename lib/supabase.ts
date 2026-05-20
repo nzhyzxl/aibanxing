@@ -42,9 +42,12 @@ export interface User {
   city_en?: string
   category?: Category
   wechat_qr_url?: string
+  contact_email?: string
+  cover_image_url?: string
   shipping_address?: string
   status: UserStatus
   invited_by?: string
+  sort_order?: number
   wechat_openid?: string
   wechat_nickname?: string
   wechat_avatar?: string
@@ -74,9 +77,20 @@ export interface Product {
   category?: string
   is_published: boolean
   sort_order: number
+  markets: string[]
   created_at: string
   updated_at: string
   artisan?: User
+}
+
+export interface Inquiry {
+  id: string
+  artisan_id: string
+  product_id?: string
+  visitor_name: string
+  visitor_email: string
+  message?: string
+  created_at: string
 }
 
 export interface Invitation {

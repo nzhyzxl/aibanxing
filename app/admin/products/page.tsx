@@ -2,10 +2,11 @@
 import { useEffect, useState } from 'react'
 import {
   Table, Button, Switch, Space, Modal, Form, Input,
-  Select, InputNumber, Tag, message, Typography, Popconfirm, Image, Grid
+  Select, InputNumber, Tag, message, Typography, Popconfirm, Image, Grid, Checkbox
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import ImageUploader from '@/components/admin/ImageUploader'
+import RichText from '@/components/frontend/RichText'
 import { supabase } from '@/lib/supabase'
 import type { Product, User } from '@/lib/supabase'
 
@@ -82,6 +83,7 @@ export default function ProductsPage() {
     setEditing(null)
     setImages([])
     form.resetFields()
+    form.setFieldsValue({ markets: ['cn'] })
     if (currentUser?.role === 'artisan') {
       form.setFieldsValue({ artisan_id: currentUser.id })
     }
@@ -97,6 +99,7 @@ export default function ProductsPage() {
       description: product.description,
       price: product.price,
       category: product.category,
+      markets: product.markets || ['cn'],
     })
     setModalOpen(true)
   }
@@ -334,12 +337,28 @@ export default function ProductsPage() {
             <Input placeholder="产品名称" />
           </Form.Item>
 
-          <Form.Item label="一句话介绍" name="description">
-            <Input.TextArea rows={2} placeholder="简单描述这个产品" maxLength={100} showCount />
+          <Form.Item label="产品介绍" name="description"
+            extra="支持换行和粘贴链接，全部产品都会展示这段介绍">
+            <Input.TextArea rows={4} placeholder="详细描述产品 — 支持换行和链接&#10;&#10;粘贴 URL 会自动变成可点击的链接" maxLength={500} showCount />
           </Form.Item>
+
+          {/* 实时预览 */}
+          <DescriptionPreview form={form} />
 
           <Form.Item label="品类" name="category">
             <Select options={CATEGORY_OPTIONS} placeholder="选择品类" />
+          </Form.Item>
+
+          <Form.Item
+            label="发布市场"
+            name="markets"
+            rules={[{ required: true, message: '请至少选择一个市场' }]}
+            extra="国内：在 aibanxing.top 展示；海外：在国际版展示"
+          >
+            <Checkbox.Group>
+              <Checkbox value="cn">🇨🇳 国内</Checkbox>
+              <Checkbox value="intl">🌍 海外</Checkbox>
+            </Checkbox.Group>
           </Form.Item>
 
           <Form.Item label="初心价（留空表示询价）" name="price">
@@ -364,6 +383,23 @@ export default function ProductsPage() {
           </Form.Item>
         </Form>
       </Modal>
+    </div>
+  )
+}
+
+// ── 产品介绍实时预览 ──
+function DescriptionPreview({ form }: { form: any }) {
+  const descValue = Form.useWatch('description', form)
+  if (!descValue) return null
+
+  return (
+    <div className="mb-6 bg-[#FDFAF5] border border-[#E8DDD4] rounded-xl p-4">
+      <p className="text-xs text-[#9E9189] mb-2 font-medium uppercase tracking-wider">
+        预览效果
+      </p>
+      <div className="text-sm text-[#2C2420] leading-relaxed">
+        <RichText content={descValue} />
+      </div>
     </div>
   )
 }

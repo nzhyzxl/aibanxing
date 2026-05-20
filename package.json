@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "echo '' && echo '  ➜ 前台 : http://localhost:3000/{locale}' && echo '  ➜ 后台 : http://localhost:3000/admin/login' && echo '' && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -22,6 +22,7 @@
     "react": "^18",
     "react-dom": "^18",
     "react-image-crop": "^11.0.5",
+    "resend": "^6.12.3",
     "sharp": "^0.33.0",
     "weixin-js-sdk": "^1.6.0"
   },

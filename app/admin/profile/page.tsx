@@ -5,6 +5,7 @@ import { LogoutOutlined, UserOutlined } from '@ant-design/icons'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import ImageUploader from '@/components/admin/ImageUploader'
+import RichText from '@/components/frontend/RichText'
 import type { User } from '@/lib/supabase'
 
 const { Title, Text } = Typography
@@ -58,6 +59,7 @@ export default function ProfilePage() {
           city: data.city,
           category: data.category,
           shipping_address: data.shipping_address,
+          contact_email: data.contact_email,
         })
         if (data.avatar_url) setAvatarUrls([data.avatar_url])
         if (data.wechat_qr_url) setQrUrls([data.wechat_qr_url])
@@ -161,14 +163,18 @@ export default function ProfilePage() {
           <Input placeholder="你的名字" />
         </Form.Item>
 
-        <Form.Item label="一句话介绍" name="bio">
+        <Form.Item label="个人介绍" name="bio"
+          extra="支持换行和链接，会展示在你的匠人主页上">
           <Input.TextArea
-            placeholder="用一两句话介绍你自己和你的手艺"
-            rows={3}
-            maxLength={100}
+            placeholder="介绍你自己和你的手艺 — 支持换行和链接&#10;&#10;粘贴 URL 会自动变成可点击的链接"
+            rows={4}
+            maxLength={500}
             showCount
           />
         </Form.Item>
+
+        {/* 实时预览 */}
+        <BioPreview form={form} />
 
         <Form.Item label="所在城市" name="city">
           <Input placeholder="如：成都 · 武侯" />
@@ -185,6 +191,20 @@ export default function ProfilePage() {
             placeholder="详细发货地址，仅平台内部可见"
             rows={2}
           />
+        </Form.Item>
+
+        <Form.Item
+          label={
+            <span>
+              国际询价邮箱
+              <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                海外访客询价时，通知将发到这里
+              </Text>
+            </span>
+          }
+          name="contact_email"
+        >
+          <Input placeholder="your@email.com（留空则发到登录邮箱）" />
         </Form.Item>
 
         <Divider />
@@ -253,6 +273,26 @@ export default function ProfilePage() {
           </Space>
         </Form.Item>
       </Form>
+
+      {/* 实时预览 */}
+      <BioPreview form={form} />
+    </div>
+  )
+}
+
+// ── 个人介绍实时预览 ──
+function BioPreview({ form }: { form: any }) {
+  const bioValue = Form.useWatch('bio', form)
+  if (!bioValue) return null
+
+  return (
+    <div className="bg-[#FDFAF5] border border-[#E8DDD4] rounded-xl p-4 mt-6">
+      <p className="text-xs text-[#9E9189] mb-2 font-medium uppercase tracking-wider">
+        预览效果
+      </p>
+      <div className="font-serif italic text-sm text-[#6B4C35] leading-relaxed">
+        <RichText content={bioValue} />
+      </div>
     </div>
   )
 }

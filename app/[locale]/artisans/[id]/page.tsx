@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import TrustChain from '@/components/frontend/TrustChain'
 import UnifiedShare from '@/components/frontend/UnifiedShare'
+import RichText from '@/components/frontend/RichText'
+import InquiryForm from '@/components/frontend/InquiryForm'
 import type { User, Product, Endorsement } from '@/lib/supabase'
 
 type EndorsementWithEndorser = Endorsement & { endorser: User }
@@ -44,9 +46,11 @@ export default function ArtisanProfilePage({
       setArtisan(artisanData as User)
 
       // 并行获取：产品、背书、邀请人
+      const marketFilter = locale === 'en' ? ['intl'] : ['cn']
       const [productsRes, endorsementsRes] = await Promise.all([
         supabase.from('products').select('*')
           .eq('artisan_id', id).eq('is_published', true)
+          .contains('markets', marketFilter)
           .order('sort_order', { ascending: false }),
         supabase.from('endorsements').select('*, endorser:endorser_id(*)')
           .eq('artisan_id', id).order('created_at', { ascending: true }),
@@ -151,7 +155,7 @@ export default function ArtisanProfilePage({
 
         {bio && (
           <p className="font-serif italic text-[#6B4C35] text-base leading-relaxed mb-3">
-            「{bio}」
+            「<RichText content={bio} />」
           </p>
         )}
 
@@ -192,32 +196,38 @@ export default function ArtisanProfilePage({
         {/* 联系转化区 */}
         <section className="py-8 border-t border-[#E8DDD4]">
           <div className="bg-[#FEF6E9] rounded-2xl p-6 text-center">
-            <h2 className="font-serif text-xl text-[#2C2420] mb-1">
-              {locale === 'zh' ? '想了解更多？' : 'Want to know more?'}
-            </h2>
-            <p className="text-sm text-[#9E9189] mb-6">
-              {locale === 'zh' ? '成交发生在私信' : 'All transactions via private chat'}
-            </p>
-
-            {artisan.wechat_qr_url ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="bg-white rounded-2xl p-4 shadow-sm inline-block">
-                  <Image src={artisan.wechat_qr_url} alt="WeChat QR"
-                    width={160} height={160} className="rounded-lg" />
-                </div>
-                <p className="text-sm text-[#6B4C35] font-medium">
-                  {locale === 'zh' ? '长按扫码添加微信' : 'Long press to add on WeChat'}
+            {locale === 'en' ? (
+              /* 海外：询价表单 */
+              <>
+                <h2 className="font-serif text-xl text-[#2C2420] mb-1">Interested?</h2>
+                <p className="text-sm text-[#9E9189] mb-6">
+                  Send {artisan.name_en || artisan.name} a message — they&apos;ll reply to your email.
                 </p>
-                <p className="text-xs text-[#9E9189]">
-                  {locale === 'zh' ? '告诉他/她你是从爱伴行看到的' : 'Tell them you found them on AiBanXing'}
-                </p>
-              </div>
+                <InquiryForm
+                  artisanId={artisan.id}
+                  artisanName={artisan.name_en || artisan.name}
+                />
+              </>
             ) : (
-              <div className="bg-white rounded-2xl p-8 inline-flex items-center justify-center border-2 border-dashed border-[#E8DDD4]">
-                <p className="text-[#9E9189] text-sm">
-                  {locale === 'zh' ? '微信二维码即将上线' : 'WeChat QR coming soon'}
-                </p>
-              </div>
+              /* 国内：微信二维码 */
+              <>
+                <h2 className="font-serif text-xl text-[#2C2420] mb-1">想了解更多？</h2>
+                <p className="text-sm text-[#9E9189] mb-6">成交发生在私信</p>
+                {artisan.wechat_qr_url ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="bg-white rounded-2xl p-4 shadow-sm inline-block">
+                      <Image src={artisan.wechat_qr_url} alt="WeChat QR"
+                        width={160} height={160} className="rounded-lg" />
+                    </div>
+                    <p className="text-sm text-[#6B4C35] font-medium">长按扫码添加微信</p>
+                    <p className="text-xs text-[#9E9189]">告诉他/她你是从爱伴行看到的</p>
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl p-8 inline-flex items-center justify-center border-2 border-dashed border-[#E8DDD4]">
+                    <p className="text-[#9E9189] text-sm">微信二维码即将上线</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </section>
@@ -263,7 +273,9 @@ function ProductItem({ product, locale }: { product: Product; locale: string }) 
       <div className="p-2.5">
         <p className="text-sm font-medium text-[#2C2420] line-clamp-1 mb-1">{name}</p>
         <div className="flex items-center gap-1">
-          <span className="text-xs bg-[#F5A623] text-white px-1.5 py-0.5 rounded-full">初心价</span>
+          <span className="text-xs bg-[#F5A623] text-white px-1.5 py-0.5 rounded-full">
+              {locale === 'zh' ? '初心价' : 'Origin Price'}
+            </span>
           <span className="text-sm font-semibold text-[#2C2420]">
             {product.price ? `¥${product.price}` : (locale === 'zh' ? '询价' : 'Inquire')}
           </span>
