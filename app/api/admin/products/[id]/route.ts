@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { getCurrentUser } from '@/lib/auth'
+import { translateProductToEnglish } from '@/lib/translate'
 
 async function checkOwnership(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, productId: string, userId: string) {
   const { data: product } = await supabaseAdmin
@@ -33,9 +34,21 @@ export async function PUT(
       }
     }
 
+    // name 或 description 有变动时重新翻译
+    const needsTranslation = body.name || body.description
+    let translationFields = {}
+    if (needsTranslation) {
+      const { name_en, description_en } = await translateProductToEnglish(
+        body.name ?? '',
+        body.description
+      )
+      if (name_en) translationFields = { ...translationFields, name_en }
+      if (description_en) translationFields = { ...translationFields, description_en }
+    }
+
     const { error } = await supabaseAdmin
       .from('products')
-      .update(body)
+      .update({ ...body, ...translationFields })
       .eq('id', params.id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })

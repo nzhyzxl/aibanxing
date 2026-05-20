@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { getCurrentUser } from '@/lib/auth'
+import { translateProductToEnglish } from '@/lib/translate'
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,9 +40,15 @@ export async function POST(request: NextRequest) {
     // 匠人只能给自己创建产品
     const artisanId = user.role === 'artisan' ? user.id : body.artisan_id
 
+    // 自动翻译中文内容为英文
+    const { name_en, description_en } = await translateProductToEnglish(
+      body.name,
+      body.description
+    )
+
     const { data, error } = await supabaseAdmin
       .from('products')
-      .insert({ ...body, artisan_id: artisanId, is_published: false })
+      .insert({ ...body, artisan_id: artisanId, is_published: false, name_en, description_en })
       .select()
       .single()
 
