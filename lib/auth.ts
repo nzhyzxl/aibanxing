@@ -26,6 +26,10 @@ export async function getCurrentUser(request: Request) {
     }
   }
 
+  // TODO: remove after debug
+  console.log('[auth] cookie keys:', cookie.split(';').map(c => c.trim().split('=')[0]).join(' | '))
+  console.log('[auth] tokenRaw found:', !!tokenRaw)
+
   if (!tokenRaw) return null
 
   try {
